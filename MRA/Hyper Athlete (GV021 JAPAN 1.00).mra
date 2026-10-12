@@ -1,0 +1,22 @@
+<misterromdescription>
+	<!-- Base-board GV title (owner-tested on MiSTer 2026-10-12) (MAME 0.289 machine "konamigv"). Disc: mount gv021-j1.chd from /media/fat/games/hyperath/ with "Mount GV Disc". -->
+	<name>Hyper Athlete (GV021 JAPAN 1.00)</name>
+	<setname>hyperath</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>1996</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Sports</category>
+	<region>Japan</region>
+	<players>4</players>
+	<joystick>8-way</joystick>
+	<rotation>horizontal</rotation>
+	<rom index="0" zip="hyperath.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+	<rom index="3" zip="hyperath.zip" md5="None">
+		<part name="hyperath.25c" crc="20a8c435"/>
+	</rom>
+	<nvram index="3" size="128"/>
+	<buttons names="Button 1,Button 2,Button 3,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+</misterromdescription>

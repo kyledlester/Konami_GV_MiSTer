@@ -1,0 +1,41 @@
+<misterromdescription>
+	<name>The Simpsons Bowling (GQ829 UAA)</name>
+	<setname>simpbowl</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>2000</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Sports</category>
+	<region>USA</region>
+	<rotation>horizontal</rotation>
+
+	<!-- Konami GV BIOS (konamigv.zip, MAME parent BIOS set) -> ioctl index 0 -->
+	<rom index="0" zip="simpbowl.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+
+	<!-- 93C46 default contents (MAME ROM_REGION16_BE "eeprom") -> ioctl index 3 -->
+	<rom index="3" zip="simpbowl.zip" md5="None">
+		<part name="simpbowl.25c" crc="2c61050c"/>
+	</rom>
+
+	<!-- Owner-tested on MiSTer 2026-10-12. Board config -> ioctl index 4: bit 0 = Simpsons Bowling daughtercard
+	     (4x Fujitsu 29F016A flash + uPD4701 trackball counter, MAME simpbowl_state) -->
+	<rom index="4">
+		<part>01</part>
+	</rom>
+
+	<!-- Persistence: 128-byte EEPROM followed by the 8 MB flash (config/nvram/).
+	     The flash ships blank; the game installs itself from the disc (see below). -->
+	<nvram index="3" size="8388736"/>
+
+	<buttons names="Button 1,Button 2,Button 3,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+
+	<!-- Disc: mount 829uaa02.chd (MAME set, unchanged) from /media/fat/games/simpbowl/ with OSD
+	     "Mount GV Disc". Trackball: USB trackball or mouse, and/or the left analog stick (OSD page
+	     "Trackball (Simpsons Bowling)").
+	     FIRST RUN (blank flash shows "3A/3B/7A/7B: BAD - SEE MANUAL"): hold Test (OSD "Test Switch" On,
+	     or the Test button) while the board boots from the disc. The game shows "EEPROM INITIALIZED",
+	     "NOW WRITING": set Test Switch Off now. It copies itself from the disc into the flash, then
+	     reboots. Open the OSD once afterwards so MiSTer saves the installed flash to config/nvram/. -->
+</misterromdescription>

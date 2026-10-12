@@ -1,0 +1,22 @@
+<misterromdescription>
+	<!-- Base-board GV title (owner-tested on MiSTer 2026-10-12) (MAME 0.289 machine "konamigv"). Disc: mount nagano98.chd from /media/fat/games/nagano98/ with "Mount GV Disc". -->
+	<name>Nagano Winter Olympics '98 (GX720 EAA)</name>
+	<setname>nagano98</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>1998</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Sports</category>
+	<region>Europe</region>
+	<players>4</players>
+	<joystick>8-way</joystick>
+	<rotation>horizontal</rotation>
+	<rom index="0" zip="nagano98.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+	<rom index="3" zip="nagano98.zip" md5="None">
+		<part name="nagano98.25c" crc="b64b7451"/>
+	</rom>
+	<nvram index="3" size="128"/>
+	<buttons names="Button 1,Button 2,Button 3,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+</misterromdescription>

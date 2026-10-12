@@ -1,0 +1,22 @@
+<misterromdescription>
+	<!-- Base-board GV title (owner-tested on MiSTer 2026-10-12) (MAME 0.289 machine "konamigv"). Disc: mount gv027-a1.chd from /media/fat/games/lacrazyc/ with "Mount GV Disc". -->
+	<name>Let's Attack Crazy Cross (GV027 ASIA 1.10)</name>
+	<setname>lacrazyc</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>1996</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Puzzle</category>
+	<region>Asia</region>
+	<players>2</players>
+	<joystick>8-way</joystick>
+	<rotation>horizontal</rotation>
+	<rom index="0" zip="lacrazyc.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+	<rom index="3" zip="lacrazyc.zip" md5="None">
+		<part name="lacrazyc.25c" crc="e20e5730"/>
+	</rom>
+	<nvram index="3" size="128"/>
+	<buttons names="Button 1,Button 2,Button 3,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+</misterromdescription>

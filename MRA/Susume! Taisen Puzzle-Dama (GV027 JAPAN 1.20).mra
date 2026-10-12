@@ -1,0 +1,33 @@
+<misterromdescription>
+	<name>Susume! Taisen Puzzle-Dama (GV027 JAPAN 1.20)</name>
+	<setname>susume</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>1996</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Puzzle</category>
+	<region>Japan</region>
+	<players>2</players>
+	<joystick>8-way</joystick>
+	<rotation>horizontal</rotation>
+
+	<!-- Konami GV BIOS (konamigv.zip, MAME parent BIOS set) -> ioctl index 0 -->
+	<rom index="0" zip="susume.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+
+	<!-- 93C46 default contents (MAME ROM_REGION16_BE "eeprom") -> ioctl index 3 -->
+	<rom index="3" zip="susume.zip" md5="None">
+		<part name="susume.25c" crc="52f17df7"/>
+	</rom>
+
+	<!-- EEPROM persistence: overrides the default once saved (config/nvram/) -->
+	<nvram index="3" size="128"/>
+
+	<buttons names="Button 1,Button 2,Button 3,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+
+	<!-- The disc is not part of the ROM stream: mount gv027j1.chd (or a CUE/BIN of it)
+	     with OSD "Mount GV Disc".
+	     MRA launches name the core after the setname, so the disc browser opens
+	     /media/fat/games/susume/ - put the CHD there. The core boots the game when the disc is mounted. -->
+</misterromdescription>

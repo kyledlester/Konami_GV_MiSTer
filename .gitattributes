@@ -1,0 +1,10 @@
+* text=auto
+*.md text eol=lf
+*.sv text eol=lf
+*.v text eol=lf
+*.vhd text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.lua text eol=lf
+*.mra text eol=lf
+*.rbf binary

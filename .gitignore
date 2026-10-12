@@ -1,0 +1,55 @@
+# Local inputs and authentication material
+/local/
+.env
+.env.*
+*.pem
+*.key
+
+# Build and simulator output
+/build/
+/build_id.v
+/jtag.cdf
+**/db/
+**/incremental_db/
+**/output_files/
+**/simulation/
+*.qws
+*.rpt
+*.summary
+*.smsg
+*.done
+*.jdi
+*.pin
+*.sof
+*.vcd
+*.fst
+*.wlf
+transcript
+c5_pin_model_dump.txt
+__pycache__/
+*.pyc
+
+# Quartus generated
+/greybox_tmp/
+*.qarlog
+/PLLJ_PLLSPE_INFO.txt
+
+# Game data and derivatives; never add to source control
+*.zip
+*.7z
+*.rom
+*.bin
+*.cue
+*.chd
+*.iso
+*.25c
+*.nvm
+
+# MAME traces / replay vectors (derived from game data)
+/traces/
+/vectors/
+
+# OS/editor state
+.DS_Store
+Thumbs.db
+.vs/

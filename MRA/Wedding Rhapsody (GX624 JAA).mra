@@ -1,0 +1,26 @@
+<misterromdescription>
+	<!-- Base-board GV title (owner-tested on MiSTer 2026-10-12) (MAME 0.289 machine "konamigv", inputs "weddingr").
+	     Disc: mount weddingr.chd from /media/fat/games/weddingr/ with "Mount GV Disc".
+	     The game's service mode "Control Type" must match the panel: "Joystick and Button" uses the
+	     normal stick + Button 1; "4 Buttons" reads Answer 1-4 on the joystick bits
+	     (Answer 1 = Up, 2 = Down, 3 = Left, 4 = Right on the MiSTer pad). -->
+	<name>Wedding Rhapsody (GX624 JAA)</name>
+	<setname>weddingr</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>1997</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Quiz</category>
+	<region>Japan</region>
+	<players>2</players>
+	<joystick>8-way</joystick>
+	<rotation>horizontal</rotation>
+	<rom index="0" zip="weddingr.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+	<rom index="3" zip="weddingr.zip" md5="None">
+		<part name="weddingr.25c" crc="b90509a0"/>
+	</rom>
+	<nvram index="3" size="128"/>
+	<buttons names="Button 1,Button 2,Button 3,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+</misterromdescription>
