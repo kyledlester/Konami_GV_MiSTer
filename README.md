@@ -1,5 +1,7 @@
 # Konami GV for MiSTer
 
+<img width="320" height="240" alt="aa63595-title-Lets-Attack-Crazy-Cross" src="https://github.com/user-attachments/assets/8386394e-86eb-4708-ac7d-15c14b63f603" /> <img width="320" height="240" alt="aasusume" src="https://github.com/user-attachments/assets/2bff1fab-cea2-4848-a4b1-1a99c35be8c3" />
+
 A MiSTer FPGA core for Konami's **GV** arcade board ("Baby Phoenix", 1995-2000), the PlayStation-based
 system behind **Susume! Taisen Puzzle-Dama / Let's Attack Crazy Cross**, **Hyper Athlete**,
 **Hyper Olympic in Nagano / Nagano Winter Olympics '98**, **Jikkyou Powerful Pro Yakyuu '96**,
