@@ -15,6 +15,14 @@ entity sio is
       bus_write            : in  std_logic;
       bus_writeMask        : in  std_logic_vector(3 downto 0);
       bus_dataRead         : out std_logic_vector(31 downto 0);
+
+      -- GV: external serial device on SIO1 (Beat the Champ factory host). Unconnected = previous stub.
+      ext_dsr              : in  std_logic := '0';             -- SIO_STAT bit 7
+      ext_rx_valid         : in  std_logic := '0';             -- SIO_STAT bit 1 (RX FIFO not empty)
+      ext_rx_data          : in  std_logic_vector(7 downto 0) := (others => '0');
+      ext_rx_pop           : out std_logic := '0';             -- CPU read SIO_DATA
+      ext_tx_strobe        : out std_logic := '0';             -- CPU wrote SIO_DATA
+      ext_tx_data          : out std_logic_vector(7 downto 0) := (others => '0');
       
       loading_savestate    : in  std_logic;
       SS_reset             : in  std_logic;
@@ -64,12 +72,24 @@ begin
             
          elsif (ce = '1') then
          
-            bus_dataRead <= (others => '0');
+            bus_dataRead  <= (others => '0');
+            ext_rx_pop    <= '0';
+            ext_tx_strobe <= '0';
 
             -- bus read
             if (bus_read = '1') then
                case (bus_addr(3 downto 1) & '0') is
-                  when x"4" => bus_dataRead <= SIO_STAT;    
+                  when x"0" =>
+                     if (ext_rx_valid = '1') then
+                        bus_dataRead <= x"000000" & ext_rx_data;
+                        ext_rx_pop   <= '1';
+                     else
+                        bus_dataRead <= (others => '1');
+                     end if;
+                  when x"4" =>
+                     bus_dataRead    <= SIO_STAT;
+                     bus_dataRead(1) <= SIO_STAT(1) or ext_rx_valid;
+                     bus_dataRead(7) <= SIO_STAT(7) or ext_dsr;
                   when x"8" => bus_dataRead <= SIO_CTRL & x"00" & SIO_MODE;
                   when x"A" => bus_dataRead <= x"0000" & SIO_CTRL;                    
                   when x"E" => bus_dataRead <= x"0000" & SIO_BAUD;  
@@ -79,6 +99,10 @@ begin
 
             -- bus write
             if (bus_write = '1') then
+               if (bus_addr(3 downto 0) = x"0" and bus_writeMask(0) = '1') then
+                  ext_tx_strobe <= '1';
+                  ext_tx_data   <= bus_dataWrite(7 downto 0);
+               end if;
                case (bus_addr(3 downto 0)) is
                   when x"8" =>
                      if (bus_writeMask(1 downto 0) /= "00") then

@@ -150,7 +150,7 @@ begin
          irq10 => irq10_set,
          dma_request => open, dma_rd_ena => '0', dma_rd_data => open, dma_rd_valid => open,
          dma_wr_ena => '0', dma_wr_data => (others => '0'),
-         in_p1 => p1, in_p2 => p2, in_p3p4 => x"FFFFFFFF", coin_counter => open,
+         in_p1 => p1, in_p2 => p2, in_p3p4 => x"FFFFFFFF", coin_counter => open, eepromout => open,
          ee_addr => ee_a, ee_wdata => ee_d, ee_we => ee_we, ee_rdata => open, ee_dirty => open,
          toc_wr => '0', toc_waddr => (others => '0'), toc_wdata => (others => '0'), img_mounted => '0',
          cd_reset_req => open, hps_req => open, hps_lba => open, hps_ack => '0', hps_wr => '0',

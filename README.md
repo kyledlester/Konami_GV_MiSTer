@@ -5,16 +5,18 @@
 A MiSTer FPGA core for Konami's **GV** arcade board ("Baby Phoenix", 1995-2000), the PlayStation-based
 system behind **Susume! Taisen Puzzle-Dama / Let's Attack Crazy Cross**, **Hyper Athlete**,
 **Hyper Olympic in Nagano / Nagano Winter Olympics '98**, **Jikkyou Powerful Pro Yakyuu '96**,
-**Wedding Rhapsody** and **The Simpsons Bowling**. One core (`KonamiGV`) runs the whole board; each game
-has its own MRA, and every game boots from its **original, unconverted MAME CHD**.
+**Wedding Rhapsody**, **The Simpsons Bowling**, **Beat the Champ**, **Dead Eye** and **Tokimeki Memorial
+Oshiete Your Heart**. One core (`KonamiGV`) runs the whole board, including the add-on boards of the last
+four; each game has its own MRA, and every game boots from its **original, unconverted MAME CHD**.
 
 I created this core because I wanted to play these games on my MiSTer FPGA. I am posting it here and open
 sourcing it for everyone to enjoy and give feedback/make improvements. This core was created with the
 assistance of AI tooling.
 
-**Status: beta.** All eight supported games boot and play on real MiSTer hardware with music, CD audio
-and sound effects, on HDMI and on 15 kHz CRTs. The Simpsons Bowling installs itself
-from its disc and works with a trackball, mouse or analog stick.
+**Status: beta.** All eleven supported games boot and play on real MiSTer hardware with music, CD audio
+and sound effects, on HDMI and on 15 kHz CRTs. The Simpsons Bowling installs itself from its disc and
+works with a trackball, mouse or analog stick. Beat the Champ and Dead Eye work despite MAME
+listing both as not working, and Tokimeki Memorial plays without its cabinet sensors (see below).
 
 ## Quick start
 
@@ -29,10 +31,9 @@ from its disc and works with a trackball, mouse or analog stick.
    example `/media/fat/games/susume/gv027j1.chd`. (When an MRA starts, MiSTer names the core after the
    set, and the disc browser opens that folder.)
 5. Load the game from the **Arcade** menu, open the OSD, choose **Mount GV Disc** and select the CHD.
-   The board resets and boots from the disc. Mount the disc every time you start a game.
+   The board resets and boots from the disc. You must mount the disc every time you start a game.
 
-ROMs, BIOS and CHDs are not included. You must supply your own. A CUE/BIN made from the same CHD also
-works, but the CHD is the intended format.
+ROMs, BIOS and CHDs are not included. You must supply your own.
 
 ## Supported games
 
@@ -44,6 +45,9 @@ works, but the CHD is the intended format.
 | Wedding Rhapsody (GX624 JAA) | `weddingr` | 1997 | Quiz | `weddingr.chd` | Boots and plays, limited testing |
 | Hyper Olympic in Nagano (GX720 JAA) | `naganoj` | 1998 | Sports | `720jaa01.chd` | Full game playable |
 | The Simpsons Bowling (GQ829 UAA) | `simpbowl` | 2000 | Bowling | `829uaa02.chd` | Full game playable (see below) |
+| Beat the Champ (GV053 UAA01) | `btchamp` | 1996 | Sports | `btchamp.chd` | Full game playable (see below) |
+| Dead Eye (GV054 UAA01) | `kdeadeye` | 1996 | Light-gun shooter | `054uaa01.chd` | Full game playable (see below) |
+| Tokimeki Memorial Oshiete Your Heart (GQ673 JAA) | `tmosh` | 1997 | Dating sim | `673jaa01.chd` | Full game playable (see below) |
 
 ### Alternatives
 
@@ -54,9 +58,8 @@ These use the same core and the same board as the main set, with a different ROM
 | Let's Attack Crazy Cross (GV027 ASIA 1.10) | `lacrazyc` | 1996 | Susume! Taisen Puzzle-Dama | `gv027-a1.chd` | Full game playable |
 | Nagano Winter Olympics '98 (GX720 EAA) | `nagano98` | 1998 | Hyper Olympic in Nagano | `nagano98.chd` | Boots and plays, limited testing |
 
-**Not supported:** Beat the Champ and Dead Eye (MAME itself marks both as not working, so there is no
-trustworthy reference to build against), and the Tokimeki Memorial Oshiete Your Heart series (it needs
-the cabinet's sensors and sticker printer).
+**Not supported yet:** the Tokimeki Memorial Oshiete Your Heart Seal versions (`tmoshs`, `tmoshsp`,
+`tmoshspa`).
 
 ## The Simpsons Bowling: first run
 
@@ -75,9 +78,50 @@ only do this once.
    boots normally: start the MRA and mount the disc, without Test.
 
 **Trackball:** a USB trackball or USB mouse, and/or the left analog stick. The
-OSD page *Trackball (Simpsons Bowling)* has speed, invert X / Y and an analog-stick on/off switch.
+OSD page *Expansion Board* has speed, invert X / Y and an analog-stick on/off switch.
 
 More detail: [docs/SIMPBOWL.md](docs/SIMPBOWL.md).
+
+## Beat the Champ
+
+Beat the Champ keeps its settings and records in a 512 KB flash chip that ships blank. On a new board the
+factory connected a host to the board's serial port: the game asks for it at power-up and, when it
+answers, runs its own flash test and factory initialisation. MAME has nothing on that port, so in MAME
+the game stops at *FLASH ROM CORRUPT*. This core answers like that host, so the first boot shows
+*FLASH ROM CHECK: OK* and *SETTINGS INITIALIZED* and goes on to the attract mode. Open the OSD once
+afterwards so MiSTer saves the flash. No game code is changed.
+
+* **Trackballs:** player 1 uses a USB trackball or mouse and/or the left analog stick; player 2 uses
+  player 2's left analog stick. Joysticks and three buttons for players 1-4 as usual.
+* **OSD → Expansion Board → Factory Reset: Next Boot** repeats the factory initialisation on the next
+  boot (clears the settings and records).
+
+## Dead Eye
+
+Dead Eye is a two-player light-gun game. MAME's set includes the factory flash image, which the MRA
+loads on the first start.
+
+* **Aim:** each player's left analog stick, which is how MiSTer delivers light guns (GunCon 2, Sinden,
+  Gun4IR, Wiimote). Player 1 can also aim with a mouse (**Gun Aim P1: Mouse**). **Button 1** is the
+  trigger.
+* **Reload:** shoot off the screen. With a mouse, push it to an edge of the screen and shoot.
+* **Gun Flash** (OSD): a CRT light gun such as the GunCon 2 only sees bright parts of the picture, and
+  Dead Eye has many dark scenes. With Gun Flash on, every trigger pull flashes the screen white for two
+  frames and reaches the game about 33 ms later, so the gun reads its position from the white screen.
+  Not needed with Sinden or other border-tracking guns.
+* **Crosshair** (OSD): shows each player's aim point (red / blue); hidden while the gun is off the
+  screen.
+
+## Tokimeki Memorial Oshiete Your Heart
+
+A dating-sim fortune game whose cabinet had a heart-rate sensor, a skin-response (GSR) sensor and a
+sticker printer. The game plays completely without them:
+
+* **Heart Rate** (OSD): the simulated pulse the game measures, 60-150 bpm (80 by default, as in MAME),
+  or *Hand Off* (no hand on the sensor).
+* **GSR sensor:** pull player 1's left analog stick down; the further down, the higher the reading.
+* **Printer:** the game believes it has paper and prints; the printed card is not shown.
+* Button 1 starts and selects; the game takes two coins per credit by default.
 
 ## Controls
 
@@ -105,15 +149,19 @@ from the joystick directions (Up, Down, Left, Right).
   * **CRT H-Position** and **CRT V-Shift**: move the picture by re-timing the sync only.
   * H-Position and V-Shift never touch the HDMI picture. H-Size also resizes the HDMI picture, so leave
     CRT Adjust **Off** if you only use HDMI.
-* **Trackball (Simpsons Bowling)**: speed, invert X / Y, analog stick on/off.
+* **Expansion Board**, shown only for the games that have one:
+  * The Simpsons Bowling and Beat the Champ: trackball speed, invert X / Y, analog stick on/off; Beat
+    the Champ also has Factory Reset.
+  * Dead Eye: Gun Aim P1 (Joystick / Mouse), Crosshair, Gun Flash.
+  * Tokimeki Memorial: Heart Rate.
 * **Hardware → GPU**: CXD8514Q (ZV610, the default, as in MAME) or CXD8561Q (GV999).
 
 ## Saves
 
 Each game's 93C46 EEPROM (operator settings, high scores) is saved to the SD card as a `.nvm` file in
 `/media/fat/config/nvram/`. MiSTer writes it when you open the OSD after the game has changed it. On a
-first start the MRA loads MAME's default EEPROM for the game. The Simpsons Bowling's `.nvm` also holds
-its 8 MB flash.
+first start the MRA loads MAME's default EEPROM for the game. The `.nvm` of The Simpsons Bowling also
+holds its 8 MB flash, and those of Beat the Champ and Dead Eye their 512 KB flash.
 
 ## How the core relates to MAME
 
@@ -127,7 +175,15 @@ hardware was checked against MAME in simulation:
 * **EEPROM**: MAME's 93C46 bit-banging replayed with identical results.
 * **Simpsons Bowling flash**: 5.5 million flash accesses from MAME (chip ID, erases, the blank check,
   46,548 program-and-verify sequences) replayed with every byte read back identical.
+* **Beat the Champ / Dead Eye flash**: 16.7 million flash accesses from MAME's Beat the Champ replayed
+  with every byte read back identical.
+* **Expansion ports**: trackball counters, gun ports, Tokimeki sensors, printer and device check, and
+  the Beat the Champ factory host, checked against MAME's behaviour.
 * **Video**: the picture is read from video memory exactly as MAME and the real GPU do.
+
+Where MAME falls short, the core goes further: Beat the Champ initialises its blank flash through the
+factory host (MAME stops at *FLASH ROM CORRUPT*), and Dead Eye works with real light guns, including
+off-screen reload and the Gun Flash option for CRT guns.
 
 The benches are in [`sim_gv/`](sim_gv/); the MAME tracing and replay tools are in [`tools/`](tools/).
 They need your own MAME set and are not run as part of the build.
@@ -142,6 +198,10 @@ Konami GV is a PlayStation (PSX) mainboard turned into an arcade board:
 * A **93C46** serial EEPROM, an **MB89371** dual UART and JAMMA inputs for up to four players.
 * The Simpsons Bowling adds a daughtercard with four **Fujitsu 29F016A** flash chips (8 MB) and an
   **NEC uPD4701A** trackball counter.
+* Beat the Champ: a **Sharp LH28F400** flash (512 KB) and two uPD4701A counters for two trackballs.
+* Dead Eye: the same flash plus a light-gun interface for two guns.
+* Tokimeki Memorial Oshiete Your Heart: a board for the heart-rate and GSR sensors and the video
+  printer.
 
 ## About the core
 
@@ -151,8 +211,8 @@ Konami GV is a PlayStation (PSX) mainboard turned into an arcade board:
   Simpsons daughtercard) is new and follows MAME.
 * **Original MAME CHDs, no conversion.** MiSTer Main's PSX CD support streams the disc. Raw Mode 1,
   cooked Mode 1 and raw Mode 2 data tracks are all handled, plus Red Book audio tracks.
-* One RBF for the platform. The Simpsons Bowling hardware is switched on by a small board record in its
-  MRA and is invisible to the other games.
+* One RBF for the platform. Each add-on board is switched on by a small board record in its game's MRA
+  and is invisible to the other games (its OSD options too).
 * Native 15 kHz output for CRTs with CRT Adjust (H-Size, H-Position, V-Shift), and the MiSTer scaler for
   HDMI.
 * Timing closes on every clock domain.
@@ -183,6 +243,7 @@ core's name must stay `PSX` for MiSTer Main's CHD support.
 * [SCSI](docs/SCSI.md) and [CD media](docs/CD_MEDIA.md)
 * [EEPROM](docs/EEPROM.md), [audio](docs/AUDIO.md), [video](docs/VIDEO.md), [CRT](docs/CRT.md)
 * [The Simpsons Bowling](docs/SIMPBOWL.md)
+* [Beat the Champ, Dead Eye, Tokimeki Memorial](docs/EXPANSION_GAMES.md)
 * [Known issues](docs/KNOWN_ISSUES.md)
 * [Credits and licences](docs/REUSE_AND_LICENSES.md)
 

@@ -52,6 +52,7 @@ entity gv_board is
       in_p2          : in  std_logic_vector(31 downto 0);
       in_p3p4        : in  std_logic_vector(31 downto 0);
       coin_counter   : out std_logic;                        -- EEPROMOUT bit 3
+      eepromout      : out std_logic_vector(7 downto 0);     -- whole EEPROMOUT register (expansion boards)
 
       -- EEPROM host port (ioctl load/save)
       ee_addr        : in  unsigned(5 downto 0);
@@ -161,6 +162,7 @@ begin
 
    ee_port_wr   <= '1' when bus_write = '1' and ce = '1' and region = 16#18# and bus_addr(15 downto 0) = 0 else '0';
    coin_counter <= eep_out(3);
+   eepromout    <= eep_out;
    disc_present <= disc_ok;
 
    bus_dataRead <= ncr_dout when rd_from_ncr = '1' else rd_reg;

@@ -25,6 +25,14 @@
 -- a free-running clk1x (33.8688 MHz) cycle count.
 --
 -- host_* : MiSTer nvram load/save of the whole 8 MB (16-bit words, same layout).
+--
+-- 16-bit personality (f16_en, Beat the Champ / Dead Eye, MAME btchamp_map / kdeadeye_map):
+--   0x1F380000-0x1F3FFFFF  Sharp LH28F400 (intelfsh16: 512 KB, maker B0h, device EDh), read/write as a
+--                          16-bit device: word address = (offset >> 1), chip 0 of the same FSM with 16-bit
+--                          program data and 64 KB block erase (MAME: base & ~0xFFFF). Reads have no side
+--                          effects, so every lane is served from the fetched word.
+--   The array is the first 512 KB of the same DDR3 window; blank_fill erases it to 0xFF (a never-saved
+--   flash reads blank, as in MAME without an nvram file).
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -41,6 +49,8 @@ entity gv_simpbowl is
       clk2x          : in  std_logic;
       ce             : in  std_logic;
       enable         : in  std_logic;
+      f16_en         : in  std_logic := '0';                -- Sharp LH28F400 at 0x1F380000
+      blank_fill     : in  std_logic := '0';                -- pulse: erase the 16-bit flash array to 0xFF
       time_ck        : in  unsigned(31 downto 0);
 
       -- EXP1 (byte-stepped)
@@ -113,6 +123,10 @@ architecture rtl of gv_simpbowl is
    signal sel_q      : std_logic := '0';
    signal need_word  : std_logic;
    signal word_hit   : std_logic;
+   signal sel_f16    : std_logic;
+   signal w16        : unsigned(17 downto 0);
+   signal need16     : std_logic;
+   signal hit16      : std_logic;
 
    -- uPD4701
    signal tb_x, tb_y, tb_sx, tb_sy : unsigned(15 downto 0) := (others => '0');
@@ -204,15 +218,21 @@ begin
                                                       fa(27) or fa(28) or fa(29) or fa(30) or fa(31)) & fa(20 downto 0)
                          and wq_cnt = 0 else '0';
 
-   bus_wait <= '1' when sel_flash = '1' and bus_read = '1' and bus_addr(3 downto 0) = 0 and
-                        need_word = '1' and word_hit = '0' else '0';
+   sel_f16 <= '1' when f16_en = '1' and bus_addr(22 downto 19) = "0111" else '0';
+   w16     <= bus_addr(18 downto 1);
+   need16  <= '1' when is_array_mode(mode(0)) else '0';
+   hit16   <= '1' when pf_valid = '1' and pf_tag = resize(w16, 22) and wq_cnt = 0 else '0';
+
+   bus_wait <= '1' when (sel_flash = '1' and bus_read = '1' and bus_addr(3 downto 0) = 0 and
+                         need_word = '1' and word_hit = '0') or
+                        (sel_f16 = '1' and bus_read = '1' and need16 = '1' and hit16 = '0') else '0';
 
    bus_dataRead <= rd_q;
    bus_sel      <= sel_q;
    dirty        <= dirty_r;
    fill_active  <= '1' when fl_active = '1' or fp_valid /= "0000" else '0';
    host_rdata   <= host_q;
-   host_wait    <= '1' when host_pend = '1' or wq_cnt >= WQ_N - 4 else '0';
+   host_wait    <= '1' when host_pend = '1' or wq_cnt >= WQ_N - 4 or fl_active = '1' or fp_valid /= "0000" else '0';
 
    ---------------------------------------------------------------------------
    -- bus side, chip FSMs, uPD4701, DDR3 engine (clk1x)
@@ -238,9 +258,13 @@ begin
       variable el       : unsigned(31 downto 0);
       variable taken    : boolean;
       variable cnt12    : unsigned(11 downto 0);
+      variable r16      : std_logic_vector(15 downto 0);
+      variable wt16     : unsigned(21 downto 0);
+      variable is16     : boolean;
 
       -- MAME intelfsh write_full for one chip (8-bit Fujitsu 29F016A: m_addrmask = 0)
-      procedure chip_write(c : integer; a : unsigned(20 downto 0); d : std_logic_vector(7 downto 0)) is
+      procedure chip_write(c : integer; a : unsigned(20 downto 0); d : std_logic_vector(7 downto 0);
+                           dw : std_logic_vector(15 downto 0)) is
       begin
          a16 := resize(a(15 downto 0), 16);
          a12 := resize(a(11 downto 0), 16);
@@ -298,12 +322,22 @@ begin
                end if;
             when FM_ERASEAMD4 => null;                                           -- writes ignored
             when FM_BYTEPROGRAM =>
-               prog_be(to_integer(bidx) + (c mod 2)) := '1';
-               prog_dat(8*(to_integer(bidx) + (c mod 2)) + 7 downto 8*(to_integer(bidx) + (c mod 2))) := d;
+               if is16 then
+                  prog_be(to_integer(bidx)) := '1'; prog_be(to_integer(bidx) + 1) := '1';
+                  prog_dat(8*to_integer(bidx) + 15 downto 8*to_integer(bidx)) := dw;
+               else
+                  prog_be(to_integer(bidx) + (c mod 2)) := '1';
+                  prog_dat(8*(to_integer(bidx) + (c mod 2)) + 7 downto 8*(to_integer(bidx) + (c mod 2))) := d;
+               end if;
                mode(c) <= FM_NORMAL;
             when FM_WRITEPART1 =>
-               prog_be(to_integer(bidx) + (c mod 2)) := '1';
-               prog_dat(8*(to_integer(bidx) + (c mod 2)) + 7 downto 8*(to_integer(bidx) + (c mod 2))) := d;
+               if is16 then
+                  prog_be(to_integer(bidx)) := '1'; prog_be(to_integer(bidx) + 1) := '1';
+                  prog_dat(8*to_integer(bidx) + 15 downto 8*to_integer(bidx)) := dw;
+               else
+                  prog_be(to_integer(bidx) + (c mod 2)) := '1';
+                  prog_dat(8*(to_integer(bidx) + (c mod 2)) + 7 downto 8*(to_integer(bidx) + (c mod 2))) := d;
+               end if;
                status(c) <= x"80"; mode(c) <= FM_READSTATUS;
             when FM_CLEARPART1 =>
                if d = x"D0" then                                                 -- block erase (64 KB)
@@ -327,14 +361,14 @@ begin
             when FM_READSTATUS => r := status(c);
             when FM_READAMDID3 =>
                case to_integer(a(7 downto 0)) is
-                  when 0      => r := x"04";
-                  when 1      => r := x"AD";
+                  when 0      => if is16 then r := x"B0"; else r := x"04"; end if;
+                  when 1      => if is16 then r := x"ED"; else r := x"AD"; end if;
                   when others => r := x"00";
                end case;
             when FM_READID =>
                case to_integer(a(7 downto 0)) is
-                  when 0      => r := x"04";
-                  when 1      => r := x"AD";
+                  when 0      => if is16 then r := x"B0"; else r := x"04"; end if;
+                  when 1      => if is16 then r := x"ED"; else r := x"AD"; end if;
                   when 3      => r := "0000000" & mlock(c);
                   when others => r := x"00";
                end case;
@@ -355,6 +389,7 @@ begin
          popped   := '0';
 
          if dirty_clr = '1' then dirty_r <= '0'; end if;
+         is16 := f16_en = '1';
 
          -- pair select / chip address of the current FA (konamigv flash_r / flash_w)
          if fa >= 16#200000# then pair := 1; else pair := 0; end if;
@@ -404,6 +439,38 @@ begin
             end if;
          end if;
 
+         -- 16-bit flash (Sharp LH28F400): reads are side-effect free, every lane serves from the word
+         if ce = '1' and bus_read = '1' and sel_f16 = '1' then
+            sel_q <= '1';
+            wt16  := resize(w16, 22);
+            if need16 = '0' or hit16 = '1' then
+               if is_array_mode(mode(0)) then
+                  r16 := pf_data;
+               else
+                  chip_read(0, resize(w16, 21), x"00", rbyte);
+                  r16 := x"00" & rbyte;
+               end if;
+               if bus_addr(0) = '0' then rd_q <= r16(7 downto 0); else rd_q <= r16(15 downto 8); end if;
+               if bus_addr(0) = '1' and need16 = '1' then           -- prefetch the next word
+                  cpu_want <= '1';
+                  cpu_tag  <= wt16 + 1;
+               end if;
+            elsif not (op = OP_CPU_RD and op_tag = wt16) then
+               cpu_want <= '1';
+               cpu_tag  <= wt16;
+            end if;
+         end if;
+         if ce = '1' and bus_write = '1' and sel_f16 = '1' then
+            if bus_addr(0) = '0' then
+               wr_lo <= bus_dataWrite;
+            else
+               d16  := bus_dataWrite & wr_lo;
+               bidx := w16(1 downto 0) & '0';
+               wtag := resize(w16, 22);
+               chip_write(0, resize(w16, 21), d16(7 downto 0), d16);
+            end if;
+         end if;
+
          -- a read that has to wait: make sure its word is being fetched
          if ce = '1' and bus_read = '1' and sel_flash = '1' and bus_addr(3 downto 0) = 0 and
             need_word = '1' and word_hit = '0' and not (op = OP_CPU_RD and op_tag = wtag) then
@@ -418,8 +485,8 @@ begin
                d16 := bus_dataWrite & wr_lo;
                case to_integer(bus_addr(3 downto 1)) is
                   when 0 =>
-                     chip_write(2*pair,     caddr, d16(7 downto 0));
-                     chip_write(2*pair + 1, caddr, d16(15 downto 8));
+                     chip_write(2*pair,     caddr, d16(7 downto 0),  x"0000");
+                     chip_write(2*pair + 1, caddr, d16(15 downto 8), x"0000");
                   when 1 => fa <= resize(unsigned(d16), 31) & '0';
                   when 2 => fa <= (fa and x"00FF00FF") or shift_left(resize(unsigned(d16), 32), 8);
                   when 3 => fa <= (fa and x"0000FFFF") or shift_left(resize(unsigned(d16), 32), 15);
@@ -479,9 +546,31 @@ begin
                pf_valid     <= '0';
             end if;
          end loop;
+         -- 16-bit personality: one chip, 64 KB block (MAME base & ~0xFFFF) or whole 512 KB, all lanes
+         if is16 and fill_req(0) = '1' then
+            fp_valid(0) <= '1';
+            if fill_blk(0) = '1' then
+               fp_start(0) <= "0000" & w16(17 downto 15) & "0000000000000";
+               fp_count(0) <= to_unsigned(8192, 20);
+            else
+               fp_start(0) <= (others => '0');
+               fp_count(0) <= to_unsigned(65536, 20);
+            end if;
+            fp_be(0)    <= x"FF";
+            fp_chips(0) <= x"01";
+         end if;
+         if blank_fill = '1' and f16_en = '1' then
+            fp_valid(0) <= '1';
+            fp_start(0) <= (others => '0');
+            fp_count(0) <= to_unsigned(65536, 20);
+            fp_be(0)    <= x"FF";
+            fp_chips(0) <= x"00";
+            gen         <= gen + 1;
+            pf_valid    <= '0';
+         end if;
          -- pair fills issued by one 16-bit write merge into the even chip's entry
          for p in 0 to 1 loop
-            if fill_req(2*p) = '1' or fill_req(2*p+1) = '1' then
+            if not is16 and (fill_req(2*p) = '1' or fill_req(2*p+1) = '1') then
                fp_valid(2*p) <= '1';
                if fill_blk(2*p) = '1' or fill_blk(2*p+1) = '1' then
                   fp_start(2*p) <= to_unsigned(p, 1) & caddr(20 downto 16) & "00000000000000";   -- 128 KB of words

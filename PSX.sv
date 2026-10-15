@@ -386,12 +386,18 @@ parameter CONF_STR = {
 	"P3O[64],Pause when OSD open,On,Off;",
 	"P3O[28],FPS Overlay,Off,On;",
 	"P3O[74],Error Overlay,Off,On;",
-	"P4,Trackball (Simpsons Bowling);",
-	"P4-;",
-	"P4O[109:108],Trackball Speed,1x,2x,4x,1/2;",
-	"P4O[110],Invert X,Off,On;",
-	"P4O[111],Invert Y,Off,On;",
-	"P4O[112],Analog Stick as Trackball,On,Off;",
+	"h4P4,Expansion Board;",
+	"h4P4-;",
+	"h0P4O[109:108],Trackball Speed,1x,2x,4x,1/2;",
+	"h0P4O[110],Trackball Invert X,Off,On;",
+	"h0P4O[111],Trackball Invert Y,Off,On;",
+	"h0P4O[112],Analog Stick as Trackball,On,Off;",
+	"h3P4-;",
+	"h3P4O[123],Factory Reset,Off,Next Boot;",
+	"h1P4O[118],Gun Aim P1,Joystick,Mouse;",
+	"h1P4O[119],Crosshair,Off,On;",
+	"h1P4O[124],Gun Flash,Off,On;",
+	"h2P4O[122:120],Heart Rate,80,60,100,120,150,Hand Off;",
 	"-;",
 	"R0,Reset;",
 	"J1,Button 1,Button 2,Button 3,Start,Coin,Service,Test;",
@@ -402,7 +408,10 @@ parameter CONF_STR = {
 reg dbg_enabled = 0;
 wire  [1:0] buttons;
 wire [127:0] status;
-wire [15:0] status_menumask = {(PadPortNeGcon1 | PadPortNeGcon2), hack_480p, filter_on, saving_memcard, (bk_pending | saving_memcard), bk_pending, status[59], multitap, biosMod, ~TURBO_MEM, (status[55] && ~hack_480p), (PadPortDS1 | PadPortDS2), dbg_enabled, (PadPortGunCon1 | PadPortGunCon2 | PadPortJustif1 | PadPortJustif2), SDRAM2_EN, (snacPort1 | snacPort2)};
+// OSD hide bits (CONF_STR "hN" = shown only when bit N is set), from the MRA's board-config byte:
+// 0 trackball (Simpsons Bowling, Beat the Champ), 1 guns (Dead Eye), 2 sensors (Tokimeki),
+// 3 factory host (Beat the Champ), 4 any expansion board (the page itself)
+wire [15:0] status_menumask;
 wire        forced_scandoubler;
 reg  [31:0] sd_lba0 = 0;
 reg  [31:0] sd_lba1;
@@ -485,7 +494,7 @@ wire [15:0] gv_ee_wdata = {ioctl_dout[7:0], ioctl_dout[15:8]};
 wire        gv_ee_we    = ee_download & ioctl_wr & ~|ioctl_addr[26:7];
 reg         ee_upload_req = 0;
 always @(posedge clk_1x) begin
-	if (gv_ee_dirty | (gv_simp & gv_fl_dirty)) ee_upload_req <= 1;
+	if (gv_ee_dirty | (gv_flash & gv_fl_dirty)) ee_upload_req <= 1;
 	else if (ee_upload) ee_upload_req <= 0;
 end
 
@@ -497,13 +506,41 @@ always @(posedge clk_1x) begin
 	if (ioctl_download & (ioctl_index[5:0] == 4) & ioctl_wr & ~|ioctl_addr[26:1]) gv_variant <= ioctl_dout[7:0];
 end
 wire        gv_simp = gv_variant[0];
+wire        gv_btc  = gv_variant[1];                              // Beat the Champ
+wire        gv_dde  = gv_variant[2];                              // Dead Eye
+wire        gv_tmo  = gv_variant[3];                              // Tokimeki Memorial Oshiete Your Heart
+wire        gv_f16  = gv_btc | gv_dde;                            // Sharp LH28F400 at 0x1F380000
+wire        gv_flash = gv_simp | gv_f16;
+assign      status_menumask = {11'd0, gv_simp | gv_btc | gv_dde | gv_tmo, gv_btc, gv_tmo, gv_dde, gv_simp | gv_btc};
+
+// a blank (0xFF) 512 KB flash array as soon as the board config is known; the MRA's default flash or the
+// saved nvram (index 3, later in the MRA) is then written over it
+reg gvcfg_q = 0, gv_blank_fill = 0;
+always @(posedge clk_1x) begin
+	gvcfg_q       <= gvcfg_download;
+	gv_blank_fill <= gvcfg_q & ~gvcfg_download & gv_f16;
+end
+
+
 
 // Simpsons Bowling flash (8 MB) shares the EEPROM's MRA nvram (index 3): bytes 0-127 EEPROM,
 // bytes 128.. the flash array as 16-bit words {chip 2p+1, chip 2p} (pair 0 then pair 1).
 wire        fl_region   = |ioctl_addr[26:7];
 wire [21:0] gv_fl_addr  = ioctl_addr[22:1] - 22'd64;
-wire        gv_fl_we    = gv_simp & ee_download & ioctl_wr & fl_region;
-wire        gv_fl_rd    = gv_simp & ee_upload & ioctl_rd & fl_region;
+wire        gv_fl_we    = gv_flash & ee_download & ioctl_wr & fl_region;
+wire        gv_fl_rd    = gv_flash & ee_upload & ioctl_rd & fl_region;
+// the 16-bit flash is kept in MAME's byte order (big-endian words, = MAME's nvram/<set>/flash file)
+wire [15:0] gv_fl_wdata = gv_f16 ? {ioctl_dout[7:0], ioctl_dout[15:8]} : ioctl_dout;
+
+// Beat the Champ factory host (see rtl/gv/gv_sio_host.vhd): active on a boot without saved flash data
+// (first run) or when forced in the OSD, and only until it has been used once in this session
+reg  gv_fl_loaded = 0, gv_host_used = 0;
+wire gv_host_done;
+always @(posedge clk_1x) begin
+	if (gv_fl_we) gv_fl_loaded <= 1;
+	if (gv_host_done) gv_host_used <= 1;
+end
+wire gv_host_en = gv_btc & (~gv_fl_loaded | status[123]) & ~gv_host_used;
 wire [15:0] gv_fl_rdata;
 wire        gv_fl_wait;
 wire        gv_fl_dirty;
@@ -555,12 +592,120 @@ always @(posedge clk_1x) begin : gv_trackball
 		dx = dx - stx;
 		dy = dy + sty;
 	end
+	if (gv_btc) dx = -dx;                                       // btchamp TRACK0_X is not reversed
 	if (status[110]) dx = -dx;
 	if (status[111]) dy = -dy;
 	gv_tb_strobe <= (dx != 10'sd0) || (dy != 10'sd0);
 	gv_tb_dx     <= tb_scale(dx, status[109:108]);
 	gv_tb_dy     <= tb_scale(dy, status[109:108]);
 end
+
+// Beat the Champ trackball 2 (player 2): player 2's left analog stick as a rate input
+reg              gv_tb1_strobe = 0;
+reg signed [9:0] gv_tb1_dx = 0, gv_tb1_dy = 0;
+reg signed [15:0] tb1_ax = 0, tb1_ay = 0;
+wire signed [7:0] tb1_sx = joystick_analog_l1[7:0];
+wire signed [7:0] tb1_sy = joystick_analog_l1[15:8];
+always @(posedge clk_1x) begin : gv_trackball2
+	reg signed [15:0] ax, ay;
+	reg signed [9:0]  stx, sty, dx, dy;
+	gv_tb1_strobe <= 0;
+	if (tb_tick == 16'd33867) begin
+		ax = tb1_ax;
+		ay = tb1_ay;
+		if (tb1_sx > 8'sd12 || tb1_sx < -8'sd12) ax = ax + tb1_sx;
+		if (tb1_sy > 8'sd12 || tb1_sy < -8'sd12) ay = ay + tb1_sy;
+		stx = ax >>> 6;
+		sty = ay >>> 6;
+		tb1_ax <= ax - (stx <<< 6);
+		tb1_ay <= ay - (sty <<< 6);
+		dx = status[110] ? -stx : stx;
+		dy = status[111] ? -sty : sty;
+		gv_tb1_strobe <= (dx != 10'sd0) || (dy != 10'sd0);
+		gv_tb1_dx     <= tb_scale(dx, status[109:108]);
+		gv_tb1_dy     <= tb_scale(dy, status[109:108]);
+	end
+end
+
+// Dead Eye guns (MAME kdeadeye GUNX 0x4C..0x1BB, GUNY 0x00..0xEF across the screen, trigger = button 1).
+// Aim: player n's left analog stick (Main_MiSTer delivers GunCon 2 / Sinden / Gun4IR / Wiimote guns and
+// plain sticks this way, 0 = screen centre) or the mouse for player 1 (OSD).
+reg  [7:0] gun_px0 = 8'h80, gun_py0 = 8'h80, gun_px1 = 8'h80, gun_py1 = 8'h80, gun_mx = 8'h80, gun_my = 8'h80;
+reg        gun_mtog = 0;
+wire signed [9:0] gun_mx_n = $signed({2'b00, gun_mx}) + $signed({mouse[4], mouse[4], mouse[15:8]});
+wire signed [9:0] gun_my_n = $signed({2'b00, gun_my}) - $signed({mouse[5], mouse[5], mouse[23:16]});
+always @(posedge clk_1x) begin
+	gun_mtog <= mouse[24];
+	if (gun_mtog != mouse[24]) begin
+		gun_mx <= (gun_mx_n < 0) ? 8'd0 : (gun_mx_n > 255) ? 8'd255 : gun_mx_n[7:0];
+		gun_my <= (gun_my_n < 0) ? 8'd0 : (gun_my_n > 255) ? 8'd255 : gun_my_n[7:0];
+	end
+	gun_px0 <= status[118] ? gun_mx : {~joystick_analog_l0[7],  joystick_analog_l0[6:0]};
+	gun_py0 <= status[118] ? gun_my : {~joystick_analog_l0[15], joystick_analog_l0[14:8]};
+	gun_px1 <= {~joystick_analog_l1[7],  joystick_analog_l1[6:0]};
+	gun_py1 <= {~joystick_analog_l1[15], joystick_analog_l1[14:8]};
+end
+// v * 1474 and v * 960 as shift-adds: all 112 DSP blocks are taken by the PSX
+function [15:0] gun_x(input [7:0] v); reg [18:0] p; begin
+	p = {v, 10'd0} + {v, 8'd0} + {v, 7'd0} + {v, 6'd0} + {v, 1'd0}; gun_x = 16'd76 + p[18:10]; end endfunction
+function [15:0] gun_y(input [7:0] v); reg [17:0] p; begin
+	p = {v, 10'd0} - {v, 6'd0}; gun_y = {8'd0, p[17:10]}; end endfunction
+// Off-screen, MiSTer convention (as the PSX core's GunCon): an axis at 0x00 or 0xFF. Main reports a CRT gun
+// that loses the picture for more than 50 ms with out-of-range coordinates, clamped to the stick limits;
+// a mouse pushed to an edge does the same. The game then reads X = Y = 0, outside its 0x4C-0x1BB /
+// 0x00-0xEF window, which it treats as a shot off the screen (reload; checked in MAME).
+wire gun_off0 = (gun_px0 == 8'h00) | (gun_px0 == 8'hFF) | (gun_py0 == 8'h00) | (gun_py0 == 8'hFF);
+wire gun_off1 = (gun_px1 == 8'h00) | (gun_px1 == 8'hFF) | (gun_py1 == 8'h00) | (gun_py1 == 8'hFF);
+wire [15:0] gv_gun_x1 = gun_off0 ? 16'd0 : gun_x(gun_px0), gv_gun_y1 = gun_off0 ? 16'd0 : gun_y(gun_py0);
+wire [15:0] gv_gun_x2 = gun_off1 ? 16'd0 : gun_x(gun_px1), gv_gun_y2 = gun_off1 ? 16'd0 : gun_y(gun_py1);
+
+// Gun Flash (OSD): a CRT light gun (GunCon) cannot see dark parts of the picture, and Dead Eye has many
+// dark scenes and does not flash the screen itself. With the option on, a trigger pull shows two white
+// frames and reaches the game two frames later, so the gun has read a lit screen by then. Aiming off the
+// screen still reads as off-screen (reload).
+reg  [2:0] gfl_vb = 0;
+reg        gfl_vbin = 0;                          // video_gamma.vb, registered in the CLK_VIDEO block below
+reg        gfl_s0 = 0, gfl_s1 = 0;
+reg  [2:0] gfl_h0 = 0, gfl_h1 = 0;               // per frame: trigger pressed in frame n-1, n-2, n-3
+always @(posedge clk_1x) begin
+	gfl_vb <= {gfl_vb[1:0], gfl_vbin};
+	if (joy[4])  gfl_s0 <= 1;
+	if (joy2[4]) gfl_s1 <= 1;
+	if (gfl_vb[2:1] == 2'b01) begin                 // start of vertical blank
+		gfl_h0 <= {gfl_h0[1:0], gfl_s0 | joy[4]};
+		gfl_h1 <= {gfl_h1[1:0], gfl_s1 | joy2[4]};
+		gfl_s0 <= 0;
+		gfl_s1 <= 0;
+	end
+end
+wire gun_flash_en = gv_dde & status[124];
+wire gun_white = gun_flash_en & ((gfl_h0[0] & ~gfl_h0[1]) | (gfl_h0[1] & ~gfl_h0[2]) |
+                                 (gfl_h1[0] & ~gfl_h1[1]) | (gfl_h1[1] & ~gfl_h1[2]));
+wire gv_trig1 = gun_flash_en ? gfl_h0[2] : joy[4];
+wire gv_trig2 = gun_flash_en ? gfl_h1[2] : joy2[4];
+
+// Tokimeki: simulated heartbeat (MAME "Simulated" default 80 bpm; OSD rate or hand off) and the GSR
+// (sweat) sensor from player 1's stick pulled down (0..0x7F; MAME's usable range is 0x00-0x80).
+reg [25:0] hb_cnt = 0;
+reg        gv_heartbeat = 0;
+reg [25:0] hb_period;
+always @(*) begin
+	case (status[122:120])
+		3'd1:    hb_period = 26'd33868800;   // 60 bpm
+		3'd2:    hb_period = 26'd20321280;   // 100
+		3'd3:    hb_period = 26'd16934400;   // 120
+		3'd4:    hb_period = 26'd13547520;   // 150
+		default: hb_period = 26'd25401600;   // 80
+	endcase
+end
+always @(posedge clk_1x) begin
+	gv_heartbeat <= 0;
+	if (hb_cnt >= hb_period) begin
+		hb_cnt       <= 0;
+		gv_heartbeat <= (status[122:120] != 3'd5);
+	end else hb_cnt <= hb_cnt + 1'd1;
+end
+wire [7:0] gv_gsr = joystick_analog_l0[15] ? 8'd0 : {1'b0, joystick_analog_l0[14:8]};
 
 hps_io #(.CONF_STR(CONF_STR), .WIDE(1), .VDNUM(5), .BLKSZ(3)) hps_io
 (
@@ -589,11 +734,11 @@ hps_io #(.CONF_STR(CONF_STR), .WIDE(1), .VDNUM(5), .BLKSZ(3)) hps_io
 	.ioctl_wr(ioctl_wr),
 	.ioctl_download(ioctl_download),
 	.ioctl_index(ioctl_index),
-	.ioctl_wait(ioctl_wait | (gv_simp & gv_fl_wait)),
+	.ioctl_wait(ioctl_wait | (gv_flash & gv_fl_wait)),
 	.ioctl_upload(ioctl_upload),
 	.ioctl_upload_req(ee_upload_req),
 	.ioctl_upload_index(8'd3),
-	.ioctl_din(fl_region ? gv_fl_rdata : {gv_ee_rdata[7:0], gv_ee_rdata[15:8]}),
+	.ioctl_din(fl_region ? (gv_f16 ? {gv_fl_rdata[7:0], gv_fl_rdata[15:8]} : gv_fl_rdata) : {gv_ee_rdata[7:0], gv_ee_rdata[15:8]}),
 	.ioctl_rd(ioctl_rd),
 
 	.sd_lba('{sd_lba0, sd_lba1, sd_lba2, sd_lba3, sd_lba4}),
@@ -639,9 +784,14 @@ assign joy = joy_unmod[16] ? 20'b0 : joy_unmod;
 // MAME P2:    0-6 as P1 (player 2), 9 START2, 10 COIN2
 // MAME P3_P4: 0-3 P3 L R U D, 4-6 P3 B1-B3, 7 START3, 8-11 P4 L R U D, 12-14 P4 B1-B3, 15 START4
 function [6:0] gv_dirbtn(input [19:0] j); gv_dirbtn = {j[6], j[5], j[4], j[2], j[3], j[0], j[1]}; endfunction
-wire [31:0] gv_p1   = ~{16'd0, 2'b00, 1'b0, (joy[10] | status[97]), joy[9], joy[8], joy[7], 2'b00, gv_dirbtn(joy)};
-wire [31:0] gv_p2   = ~{16'd0, 5'd0, joy2[8], joy2[7], 2'b00, gv_dirbtn(joy2)};
-wire [31:0] gv_p3p4 = ~{16'd0, joy4[7], gv_dirbtn(joy4), joy3[7], gv_dirbtn(joy3)};
+wire [31:0] gv_p1_n   = ~{16'd0, 2'b00, 1'b0, (joy[10] | status[97]), joy[9], joy[8], joy[7], 2'b00, gv_dirbtn(joy)};
+wire [31:0] gv_p2_n   = ~{16'd0, 5'd0, joy2[8], joy2[7], 2'b00, gv_dirbtn(joy2)};
+wire [31:0] gv_p3p4_n = ~{16'd0, joy4[7], gv_dirbtn(joy4), joy3[7], gv_dirbtn(joy3)};
+// Dead Eye: joystick/button bits 0-6 unknown (MAME kdeadeye), P3/P4 unknown; triggers are on the gun board.
+// Tokimeki: P1 bits 5-9, 14+ unused; P2 only bit 10 (device check, inserted in psx_top); P3/P4 unused.
+wire [31:0] gv_p1   = gv_dde ? (gv_p1_n | 32'h0000007F) : gv_tmo ? (gv_p1_n | 32'hFFFFC3E0) : gv_p1_n;
+wire [31:0] gv_p2   = gv_dde ? (gv_p2_n | 32'h0000007F) : gv_tmo ? 32'hFFFFFFFF : gv_p2_n;
+wire [31:0] gv_p3p4 = (gv_dde | gv_tmo) ? 32'hFFFFFFFF : gv_p3p4_n;
 
 assign sd_rd[0] = 0;
 assign sd_wr[0] = 0;
@@ -1211,12 +1361,26 @@ psx
    .gv_tb_dy        (gv_tb_dy),
    .gv_fl_addr      (gv_fl_addr),
    .gv_fl_we        (gv_fl_we),
-   .gv_fl_wdata     (ioctl_dout),
+   .gv_fl_wdata     (gv_fl_wdata),
    .gv_fl_rd        (gv_fl_rd),
    .gv_fl_rdata     (gv_fl_rdata),
    .gv_fl_wait      (gv_fl_wait),
    .gv_fl_dirty     (gv_fl_dirty),
    .gv_fl_dirty_clr (ee_upload),
+   .gv_tb1_strobe   (gv_tb1_strobe),
+   .gv_tb1_dx       (gv_tb1_dx),
+   .gv_tb1_dy       (gv_tb1_dy),
+   .gv_gun_x1       (gv_gun_x1),
+   .gv_gun_y1       (gv_gun_y1),
+   .gv_gun_x2       (gv_gun_x2),
+   .gv_gun_y2       (gv_gun_y2),
+   .gv_gun_trig1    (gv_trig1),
+   .gv_gun_trig2    (gv_trig2),
+   .gv_heartbeat    (gv_heartbeat),
+   .gv_gsr          (gv_gsr),
+   .gv_host_en      (gv_host_en),
+   .gv_host_done    (gv_host_done),
+   .gv_blank_fill   (gv_blank_fill),
    // spuram
    .spuram_dataWrite(spuram_dataWrite),
    .spuram_Adr      (spuram_Adr      ),
@@ -1644,6 +1808,66 @@ assign CE_PIXEL = ce_pix;
 wire [4:0]        crt_hs_idx = status[117:113];
 wire signed [4:0] crt_hsize  = (crt_hs_idx <= 5'd10) ? crt_hs_idx : (crt_hs_idx - 5'd23);
 wire              crt_hs_on;
+
+// Dead Eye crosshair (OSD): a 9-pixel cross per player at the aimed point, in active-picture coordinates
+// (x = aim * width / 256, y = aim * height / 256), player 1 red, player 2 blue.
+reg  [9:0] xh_x = 0, xh_w = 320;
+reg  [8:0] xh_y = 0, xh_h = 240;
+reg        xh_hb_q = 1, xh_vb_q = 1;
+reg  [7:0] xh_ax0, xh_ay0, xh_ax1, xh_ay1;
+always @(posedge CLK_VIDEO) begin
+	xh_ax0 <= gun_px0; xh_ay0 <= gun_py0; xh_ax1 <= gun_px1; xh_ay1 <= gun_py1;
+	gfl_vbin <= video_gamma.vb;
+	if (ce_pix) begin
+		xh_hb_q <= video_gamma.hb;
+		if (!video_gamma.hb) xh_x <= xh_x + 1'd1;
+		if (video_gamma.hb & ~xh_hb_q) begin                      // end of an active line
+			if (xh_x != 0) xh_w <= xh_x;
+			xh_x <= 0;
+			if (!video_gamma.vb) xh_y <= xh_y + 1'd1;
+		end
+		xh_vb_q <= video_gamma.vb;
+		if (video_gamma.vb & ~xh_vb_q) begin
+			if (xh_y != 0) xh_h <= xh_y;
+			xh_y <= 0;
+		end
+	end
+end
+// target positions = aim * size, by one shift-add serial multiplier cycling through the four products
+// (all DSP blocks are taken by the PSX; positions change at most once per frame)
+reg  [17:0] xh_tx0 = 0, xh_tx1 = 0;
+reg  [16:0] xh_ty0 = 0, xh_ty1 = 0;
+reg  [1:0]  xh_sel = 0;
+reg  [3:0]  xh_bit = 0;
+reg  [17:0] xh_acc = 0;
+wire [7:0]  xh_a = (xh_sel == 0) ? xh_ax0 : (xh_sel == 1) ? xh_ax1 : (xh_sel == 2) ? xh_ay0 : xh_ay1;
+wire [9:0]  xh_m = xh_sel[1] ? {1'b0, xh_h} : xh_w;
+always @(posedge CLK_VIDEO) begin
+	if (xh_bit == 8) begin
+		case (xh_sel)
+			0: xh_tx0 <= xh_acc;
+			1: xh_tx1 <= xh_acc;
+			2: xh_ty0 <= xh_acc[16:0];
+			3: xh_ty1 <= xh_acc[16:0];
+		endcase
+		xh_sel <= xh_sel + 1'd1;
+		xh_bit <= 0;
+		xh_acc <= 0;
+	end else begin
+		// MSB first: acc = acc * 2 + (aim bit ? size : 0)
+		xh_acc <= {xh_acc[16:0], 1'b0} + (xh_a[7 - xh_bit[2:0]] ? {8'd0, xh_m} : 18'd0);
+		xh_bit <= xh_bit + 1'd1;
+	end
+end
+function xh_on(input [9:0] x, input [8:0] y, input [9:0] tx, input [8:0] ty);
+	xh_on = ((y == ty) && (x + 10'd4 >= tx) && (x <= tx + 10'd4)) ||
+	        ((x == tx) && (y + 9'd4 >= ty) && (y <= ty + 9'd4));
+endfunction
+wire xh_p1 = gv_dde & status[119] & ~gun_off0 & ~video_gamma.hb & ~video_gamma.vb & xh_on(xh_x, xh_y, xh_tx0[17:8], xh_ty0[16:8]);
+wire xh_p2 = gv_dde & status[119] & ~gun_off1 & ~video_gamma.hb & ~video_gamma.vb & xh_on(xh_x, xh_y, xh_tx1[17:8], xh_ty1[16:8]);
+wire [7:0] xh_r = gun_white ? 8'hFF : xh_p1 ? 8'hFF : xh_p2 ? 8'h20 : video_gamma.red;
+wire [7:0] xh_g = gun_white ? 8'hFF : xh_p1 ? 8'h20 : xh_p2 ? 8'h40 : video_gamma.green;
+wire [7:0] xh_b = gun_white ? 8'hFF : xh_p1 ? 8'h20 : xh_p2 ? 8'hFF : video_gamma.blue;
 gv_crt_hsize crt_hsize_i
 (
 	.clk(CLK_VIDEO),
@@ -1651,9 +1875,9 @@ gv_crt_hsize crt_hsize_i
 	.enable(status[99]),
 	.hsize(crt_hsize),
 	.hb(video_gamma.hb),
-	.r_in(video_gamma.red),
-	.g_in(video_gamma.green),
-	.b_in(video_gamma.blue),
+	.r_in(xh_r),
+	.g_in(xh_g),
+	.b_in(xh_b),
 	.r_out(VGA_R),
 	.g_out(VGA_G),
 	.b_out(VGA_B),

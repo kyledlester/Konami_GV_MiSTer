@@ -139,6 +139,21 @@ entity psx_mister is
       gv_fl_wait            : out std_logic;
       gv_fl_dirty           : out std_logic;
       gv_fl_dirty_clr       : in  std_logic;
+      -- expansion boards (MRA config byte: bit1 Beat the Champ, bit2 Dead Eye, bit3 Tokimeki)
+      gv_tb1_strobe         : in  std_logic;                       -- second trackball (Beat the Champ P2)
+      gv_tb1_dx             : in  signed(9 downto 0);
+      gv_tb1_dy             : in  signed(9 downto 0);
+      gv_gun_x1             : in  unsigned(15 downto 0);           -- Dead Eye gun ports
+      gv_gun_y1             : in  unsigned(15 downto 0);
+      gv_gun_x2             : in  unsigned(15 downto 0);
+      gv_gun_y2             : in  unsigned(15 downto 0);
+      gv_gun_trig1          : in  std_logic;
+      gv_gun_trig2          : in  std_logic;
+      gv_heartbeat          : in  std_logic;                       -- Tokimeki sensors
+      gv_gsr                : in  std_logic_vector(7 downto 0);
+      gv_host_en            : in  std_logic;                       -- Beat the Champ factory host on SIO1
+      gv_host_done          : out std_logic;
+      gv_blank_fill         : in  std_logic;                       -- erase the 16-bit flash array;
       -- spuram
       spuram_dataWrite      : out std_logic_vector(31 downto 0);
       spuram_Adr            : out std_logic_vector(18 downto 0);
@@ -456,6 +471,20 @@ begin
       gv_fl_wait            => gv_fl_wait,
       gv_fl_dirty           => gv_fl_dirty,
       gv_fl_dirty_clr       => gv_fl_dirty_clr,
+      gv_tb1_strobe         => gv_tb1_strobe,
+      gv_tb1_dx             => gv_tb1_dx,
+      gv_tb1_dy             => gv_tb1_dy,
+      gv_gun_x1             => gv_gun_x1,
+      gv_gun_y1             => gv_gun_y1,
+      gv_gun_x2             => gv_gun_x2,
+      gv_gun_y2             => gv_gun_y2,
+      gv_gun_trig1          => gv_gun_trig1,
+      gv_gun_trig2          => gv_gun_trig2,
+      gv_heartbeat          => gv_heartbeat,
+      gv_gsr                => gv_gsr,
+      gv_host_en            => gv_host_en,
+      gv_host_done          => gv_host_done,
+      gv_blank_fill         => gv_blank_fill,
       -- spuram
       spuram_dataWrite      => spuram_dataWrite, 
       spuram_Adr            => spuram_Adr,       

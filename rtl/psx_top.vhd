@@ -144,6 +144,21 @@ entity psx_top is
       gv_fl_wait            : out std_logic;
       gv_fl_dirty           : out std_logic;
       gv_fl_dirty_clr       : in  std_logic;
+      -- expansion boards (MRA config byte: bit1 Beat the Champ, bit2 Dead Eye, bit3 Tokimeki)
+      gv_tb1_strobe         : in  std_logic;                       -- second trackball (Beat the Champ P2)
+      gv_tb1_dx             : in  signed(9 downto 0);
+      gv_tb1_dy             : in  signed(9 downto 0);
+      gv_gun_x1             : in  unsigned(15 downto 0);           -- Dead Eye gun ports
+      gv_gun_y1             : in  unsigned(15 downto 0);
+      gv_gun_x2             : in  unsigned(15 downto 0);
+      gv_gun_y2             : in  unsigned(15 downto 0);
+      gv_gun_trig1          : in  std_logic;
+      gv_gun_trig2          : in  std_logic;
+      gv_heartbeat          : in  std_logic;                       -- Tokimeki sensors
+      gv_gsr                : in  std_logic_vector(7 downto 0);
+      gv_host_en            : in  std_logic;                       -- Beat the Champ factory host on SIO1
+      gv_host_done          : out std_logic;
+      gv_blank_fill         : in  std_logic;                       -- erase the 16-bit flash array;
       -- spuram
       spuram_dataWrite      : out std_logic_vector(31 downto 0);
       spuram_Adr            : out std_logic_vector(18 downto 0);
@@ -420,6 +435,13 @@ architecture arch of psx_top is
    signal gv_board_dataRead      : std_logic_vector(7 downto 0);
    signal simp_dataRead          : std_logic_vector(7 downto 0);
    signal simp_sel               : std_logic;
+   signal expio_dataRead         : std_logic_vector(7 downto 0);
+   signal expio_sel              : std_logic;
+   signal gv_eepout              : std_logic_vector(7 downto 0);
+   signal gv_dc_bit              : std_logic;
+   signal gv_p2_eff              : std_logic_vector(31 downto 0);
+   signal sio_ext_dsr, sio_ext_rx_valid, sio_ext_rx_pop, sio_ext_tx_strobe : std_logic;
+   signal sio_ext_rx_data, sio_ext_tx_data : std_logic_vector(7 downto 0);
    signal gv_time_ck             : unsigned(31 downto 0) := (others => '0');
    -- Konami 573 player-1 inputs, mapped from pad 1 into the 573 active-high button encoding.
    signal konami_btn_ah          : unsigned(31 downto 0);   -- active-high pressed mask
@@ -1148,6 +1170,8 @@ begin
       clk2x          => clk2x,
       ce             => ce,
       enable         => gv_variant(0),
+      f16_en         => gv_variant(1) or gv_variant(2),
+      blank_fill     => gv_blank_fill,
       time_ck        => gv_time_ck,
 
       bus_addr       => bus_exp1_addr,
@@ -1393,6 +1417,12 @@ begin
       bus_write            => bus_sio_write,    
       bus_writeMask        => bus_sio_writeMask,
       bus_dataRead         => bus_sio_dataRead,
+      ext_dsr              => sio_ext_dsr,
+      ext_rx_valid         => sio_ext_rx_valid,
+      ext_rx_data          => sio_ext_rx_data,
+      ext_rx_pop           => sio_ext_rx_pop,
+      ext_tx_strobe        => sio_ext_tx_strobe,
+      ext_tx_data          => sio_ext_tx_data,
       
       loading_savestate    => loading_savestate,
       SS_reset             => SS_reset,
@@ -1926,9 +1956,10 @@ begin
       dma_wr_data    => DMA_EXP_write,
 
       in_p1          => gv_p1,
-      in_p2          => gv_p2,
+      in_p2          => gv_p2_eff,
       in_p3p4        => gv_p3p4,
       coin_counter   => gv_coin_counter,
+      eepromout      => gv_eepout,
 
       ee_addr        => gv_ee_addr,
       ee_wdata       => gv_ee_wdata,
@@ -1952,7 +1983,63 @@ begin
 
       disc_present   => gv_disc_present
    );
-   bus_exp1_dataRead <= simp_dataRead when simp_sel = '1' else gv_board_dataRead;
+   bus_exp1_dataRead <= simp_dataRead  when simp_sel = '1' else
+                        expio_dataRead when expio_sel = '1' else gv_board_dataRead;
+
+   -- Tokimeki: P2 bit 10 is the expansion board's device-check line (MAME tokimeki_device_check_r)
+   gv_p2_eff <= gv_p2(31 downto 11) & gv_dc_bit & gv_p2(9 downto 0) when gv_variant(3) = '1' else gv_p2;
+
+   -- Beat the Champ / Dead Eye / Tokimeki expansion ports at 0x1F680080-FF
+   igvexpio : entity work.gv_expio
+   port map
+   (
+      clk1x          => clk1x,
+      ce             => ce,
+      reset          => reset_intern,
+      en_btc         => gv_variant(1),
+      en_gun         => gv_variant(2),
+      en_tmo         => gv_variant(3),
+      bus_addr       => bus_exp1_addr,
+      bus_read       => bus_exp1_read,
+      bus_write      => bus_exp1_write,
+      bus_dataWrite  => bus_exp1_dataWrite,
+      bus_dataRead   => expio_dataRead,
+      bus_sel        => expio_sel,
+      tb0_strobe     => gv_tb_strobe,
+      tb0_dx         => gv_tb_dx,
+      tb0_dy         => gv_tb_dy,
+      tb1_strobe     => gv_tb1_strobe,
+      tb1_dx         => gv_tb1_dx,
+      tb1_dy         => gv_tb1_dy,
+      gun_x1         => gv_gun_x1,
+      gun_y1         => gv_gun_y1,
+      gun_x2         => gv_gun_x2,
+      gun_y2         => gv_gun_y2,
+      gun_trig1      => gv_gun_trig1,
+      gun_trig2      => gv_gun_trig2,
+      heartbeat      => gv_heartbeat,
+      gsr            => gv_gsr,
+      paper_empty    => '0',
+      printer_fault  => '0',
+      eep_bit4       => gv_eepout(4),
+      dc_start       => x"0000",                                  -- tmosh (tmoshs F073h, tmoshsp F0BAh)
+      dc_bit         => gv_dc_bit
+   );
+
+   -- Beat the Champ factory host on SIO1 (sets the game's factory flag on a blank flash, see gv_sio_host)
+   igvhost : entity work.gv_sio_host
+   port map
+   (
+      clk1x          => clk1x,
+      enable         => gv_host_en and gv_variant(1),
+      tx_strobe      => sio_ext_tx_strobe,
+      tx_data        => sio_ext_tx_data,
+      rx_pop         => sio_ext_rx_pop,
+      dsr            => sio_ext_dsr,
+      rx_valid       => sio_ext_rx_valid,
+      rx_data        => sio_ext_rx_data,
+      done           => gv_host_done
+   );
 
    -- Audio: MAME konamigv speaker = 0.75 * SPU (ch1 -> left, ch0 -> right) + 1.0 * CD-DA
    process (clk1x)

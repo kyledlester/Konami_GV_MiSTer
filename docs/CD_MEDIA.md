@@ -45,7 +45,14 @@ Main itself caches one CHD hunk (4 frames) per request, so sequential frames are
 | CUE + BIN (MODE1/2352 + AUDIO, single or multi file) | supported by Main |
 | ISO / 2048-byte images | not supported (no audio tracks; use the CHD) |
 
-Track pregaps: Main exposes pregap frames inside the preceding track; Susume's CHD has none.
+## Pregaps the CHD does not store
+
+Some discs have pregaps that chdman records as `PREGAP:n PGTYPE:<type>` without a leading `V`
+(not stored in the CHD): kdeadeye, tmosh, hyperath and naganoj (track 2: 150 frames) and lacrazyc
+(track 2: 150, tracks 3-35: 149). Main (`mister_load_chd`, `psx.cpp load_chd`) lays such discs out with
+later track starts than MAME's logical numbering. The core uses Main's track starts as delivered. A remap
+to MAME's numbering was built and tested on hardware: with it, Crazy Cross music started ~2 s late,
+while Main's starts sound right, so it was removed.
 
 ## Rejected alternatives
 

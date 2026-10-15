@@ -18,10 +18,10 @@ $NVC --work=mem -a --relaxed "$R/rtl/SyncRam.vhd" "$R/rtl/SyncFifo.vhd" "$R/rtl/
 $NVC --work=gv -a --relaxed \
   "$R/rtl/gv/gv_scsi_pkg.vhd" "$R/rtl/gv/gv_lba2msf.vhd" "$R/rtl/gv/gv_eeprom93c46.vhd" \
   "$R/rtl/gv/gv_ncr53cf96.vhd" "$R/rtl/gv/gv_scsi_cdrom.vhd" "$R/rtl/gv/gv_cd_media.vhd" \
-  "$R/rtl/gv/gv_cdda.vhd" "$R/rtl/gv/gv_board.vhd" "$R/rtl/gv/gv_simpbowl.vhd" "$R/rtl/dma.vhd" \
+  "$R/rtl/gv/gv_cdda.vhd" "$R/rtl/gv/gv_board.vhd" "$R/rtl/gv/gv_simpbowl.vhd" "$R/rtl/gv/gv_expio.vhd" "$R/rtl/gv/gv_sio_host.vhd" "$R/rtl/dma.vhd" \
   "$R/rtl/memorymux.vhd" \
   "$R/sim_gv/tb_gv_replay.vhd" "$R/sim_gv/tb_gv_cdda.vhd" "$R/sim_gv/tb_gv_dma5.vhd" \
-  "$R/sim_gv/tb_gv_memmux.vhd" "$R/sim_gv/tb_gv_eeprom.vhd" "$R/sim_gv/tb_gv_simpbowl.vhd" "$R/sim_gv/tb_gv_cdmedia.vhd" || exit 1
+  "$R/sim_gv/tb_gv_memmux.vhd" "$R/sim_gv/tb_gv_eeprom.vhd" "$R/sim_gv/tb_gv_simpbowl.vhd" "$R/sim_gv/tb_gv_cdmedia.vhd" "$R/sim_gv/tb_gv_expio.vhd" || exit 1
 
 fail=0
 run() {
@@ -40,6 +40,7 @@ fi
 run "cpu -> memorymux -> gv_board"  tb_gv_memmux
 run "93c46 write path"              tb_gv_eeprom
 run "cd frame layouts (MODE1/MODE1_RAW/MODE2_RAW)" tb_gv_cdmedia
+run "expansion i/o + factory host (MAME btchamp/kdeadeye/tmosh)" tb_gv_expio
 if [ -f "$VEC/simpbowl/flash_events.txt" ]; then
   run "simpbowl flash replay (MAME)"  tb_gv_simpbowl -gEVENTS="$VEC/simpbowl/flash_events.txt"
 fi

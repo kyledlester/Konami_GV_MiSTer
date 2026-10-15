@@ -119,7 +119,7 @@ begin
       irq10 => irq10,
       dma_request => exp_req, dma_rd_ena => exp_rena, dma_rd_data => exp_rd, dma_rd_valid => exp_valid,
       dma_wr_ena => exp_wena, dma_wr_data => exp_wd,
-      in_p1 => x"FFFFFFFF", in_p2 => x"FFFFFFFF", in_p3p4 => x"FFFFFFFF", coin_counter => open,
+      in_p1 => x"FFFFFFFF", in_p2 => x"FFFFFFFF", in_p3p4 => x"FFFFFFFF", coin_counter => open, eepromout => open,
       ee_addr => (others => '0'), ee_wdata => (others => '0'), ee_we => '0', ee_rdata => open, ee_dirty => open,
       toc_wr => toc_wr, toc_waddr => toc_wa, toc_wdata => toc_wd, img_mounted => mounted, cd_reset_req => open,
       hps_req => hps_req, hps_lba => hps_lba, hps_ack => hps_ack, hps_wr => hps_wr, hps_data => hps_data,

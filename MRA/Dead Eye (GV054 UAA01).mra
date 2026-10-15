@@ -1,0 +1,31 @@
+<misterromdescription>
+	<!-- Expansion board: Sharp LH28F400 flash + light gun interface (MAME 0.289 machine "kdeadeye"). Disc: mount 054uaa01.chd (MAME set, unchanged) from
+	     /media/fat/games/kdeadeye/ with "Mount GV Disc". -->
+	<name>Dead Eye (GV054 UAA01)</name>
+	<setname>kdeadeye</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>1996</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Shooter</category>
+	<region>USA</region>
+	<players>2</players>
+	<rotation>horizontal</rotation>
+	<rom index="0" zip="kdeadeye.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+	<!-- EEPROM, then the factory flash image (MAME region "flash") -> ioctl index 3 -->
+	<!-- Board config -> ioctl index 4, before index 3 (it starts the blank flash fill) -->
+	<rom index="4">
+		<part>04</part>
+	</rom>
+	<rom index="3" zip="kdeadeye.zip" md5="None">
+		<part name="kdeadeye.25c" crc="3935d2df"/>
+		<part name="kdeadeye.flash" crc="f87f18cf"/>
+	</rom>
+	<nvram index="3" size="524416"/>
+	<buttons names="Trigger,-,-,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+	<!-- Guns: aim with each player's left analog stick (Main delivers GunCon 2 / Sinden / Gun4IR / Wiimote
+	     light guns as analog stick positions) or, for P1, the mouse (OSD "Gun Aim P1"); trigger = Button 1.
+	     OSD "Crosshair" draws the aim points. -->
+</misterromdescription>

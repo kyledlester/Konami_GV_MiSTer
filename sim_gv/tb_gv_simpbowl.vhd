@@ -5,16 +5,19 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.math_real.all;
 use std.textio.all;
 
 entity tb_gv_simpbowl is
    generic (
       EVENTS : string  := "flash_events.txt";
-      MAXEV  : natural := 100000000
+      MAXEV  : natural := 100000000;
+      F16    : boolean := false              -- Sharp LH28F400 personality: offsets from 0x1F380000
    );
 end entity;
 
 architecture sim of tb_gv_simpbowl is
+   function to_sl(b : boolean) return std_logic is begin if b then return '1'; else return '0'; end if; end function;
    signal clk1x, clk2x : std_logic := '1';
    signal time_ck      : unsigned(31 downto 0) := (others => '0');
    signal bus_addr     : unsigned(22 downto 0) := (others => '0');
@@ -35,7 +38,8 @@ begin
 
    dut : entity work.gv_simpbowl
    port map (
-      clk1x => clk1x, clk2x => clk2x, ce => '1', enable => '1', time_ck => time_ck,
+      clk1x => clk1x, clk2x => clk2x, ce => '1', enable => to_sl(not F16), f16_en => to_sl(F16),
+      blank_fill => '0', time_ck => time_ck,
       bus_addr => bus_addr, bus_read => bus_read, bus_write => bus_write,
       bus_dataWrite => bus_wdata, bus_dataRead => bus_rdata, bus_sel => bus_sel, bus_wait => bus_wait,
       tb_strobe => '0', tb_dx => (others => '0'), tb_dy => (others => '0'),
@@ -89,14 +93,24 @@ begin
       variable lane0: integer;
       variable exp  : std_logic_vector(7 downto 0);
       variable o8   : std_logic_vector(7 downto 0);
+      variable o24  : std_logic_vector(23 downto 0);
+      variable base : natural;
       variable fill_t : real := -1.0;    -- MAME time at which the running fill started
+      variable tk     : real;
+      variable thi    : integer;
    begin
       wait for 100 ns;
       wait until rising_edge(clk1x);
       while not endfile(f) and n < MAXEV loop
          readline(f, l);
          read(l, rw); read(l, sp);
-         hread(l, o8); read(l, sp);
+         if F16 then
+            hread(l, o24); read(l, sp);
+            base := 16#380000# + to_integer(unsigned(o24));
+         else
+            hread(l, o8); read(l, sp);
+            base := 16#680080# + to_integer(unsigned(o8));
+         end if;
          hread(l, msk); read(l, sp);
          hread(l, dat); read(l, sp);
          read(l, tr);
@@ -106,10 +120,15 @@ begin
             while fill_active = '1' loop wait until rising_edge(clk1x); end loop;
          end if;
          if fill_active = '0' then fill_t := -1.0; end if;
-         time_ck <= to_unsigned(integer(tr * 33868800.0), 32);
+         -- clk1x cycles modulo 2**32 (the hardware counter wraps every ~127 s)
+         tk  := tr * 33868800.0;
+         tk  := tk - floor(tk / 4294967296.0) * 4294967296.0;
+         thi := integer(floor(tk / 65536.0));
+         time_ck <= to_unsigned(thi, 16) & to_unsigned(integer(floor(tk - real(thi) * 65536.0)), 16);
+         wait until rising_edge(clk1x);     -- let timers see the new time before the access (MAME: timer first)
          if msk(15 downto 0) = x"FFFF" then lane0 := 0; else lane0 := 2; end if;
          for ln in lane0 to lane0 + 1 loop
-            bus_addr <= to_unsigned(16#680080# + to_integer(unsigned(o8)) + ln, 23);
+            bus_addr <= to_unsigned(base + ln, 23);
             if rw = 'W' then
                bus_wdata <= dat(8*ln+7 downto 8*ln);
                bus_write <= '1';

@@ -7,6 +7,9 @@
   Nagano Winter Olympics '98, Jikkyou Powerful Pro Yakyuu '96, Wedding Rhapsody.
 * The Simpsons Bowling installs itself into flash from its disc, boots from the saved flash afterwards,
   and plays with the analog stick as the trackball.
+* Beat the Champ initialises its blank flash on the first boot and plays with a mouse as the trackball.
+* Dead Eye plays with a GunCon 2 on a CRT, including off-screen reload (Gun Flash for dark scenes).
+* Tokimeki Memorial Oshiete Your Heart plays through with the simulated heart-rate and GSR sensors.
 * HDMI and native 15 kHz analog output (component and RGB) on three MiSTer setups.
 
 A game that shows HARDWARE ERROR or PROGRAM LOADING / FILE ERROR right after the BIOS checks almost
@@ -31,14 +34,16 @@ always has no disc mounted: mount the CHD with OSD → Mount GV Disc.
   pinned) and region detection is skipped. PSX memory-card automount is forced off.
 
 ## Not in this build
-* Out of scope (owner decision 2026-10-12): Beat the Champ and Dead Eye (MAME marks both not working, so
-  there is no trustworthy reference), Tokimeki Memorial Oshiete Your Heart x4 (sensor/printer hardware).
+* The Tokimeki Memorial Oshiete Your Heart Seal versions (`tmoshs`, `tmoshsp`, `tmoshspa`) are not
+  supported yet.
+* Tokimeki Memorial: the printed card is not shown (MAME draws it on a second screen).
 * Unused PlayStation parts (MDEC, memory cards, controller devices, cheat engine, savestates) stay in
   the build but are disabled. None of the supported games touches MDEC (checked in MAME).
 
 ## Timing closure
-* At 91 % ALMs the HDMI-clock domain (MiSTer `ascal` scaler, 148.5 MHz) is placement-sensitive: with
-  identical RTL, seeds 1/2/3 gave +0.287 / -0.262 / -0.781 ns. Releases use only clean builds (setup and
+* The design uses 98 % of the ALMs (all 112 DSP blocks are taken by the PSX), and the HDMI-clock domain
+  (MiSTer `ascal` scaler, 148.5 MHz) is placement-sensitive: with identical RTL, different seeds range
+  from clean to about -1 ns. Releases use only clean builds (setup and
   hold >= 0 on every clock); after RTL changes, run a few seeds in parallel and keep a clean one.
 * Already applied: MISTER_DISABLE_ADAPTIVE, no MISTER_FB, all-path/multi-corner hold optimization,
   placement effort 2.0. Next levers if needed: shrink the NCR/target logic, trim more PSX-only blocks.

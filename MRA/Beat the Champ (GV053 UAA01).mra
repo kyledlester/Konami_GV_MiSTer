@@ -1,0 +1,33 @@
+<misterromdescription>
+	<!-- Expansion board: Sharp LH28F400 flash + 2x uPD4701A trackball counters (MAME 0.289 machine "btchamp"). Disc: mount btchamp.chd (MAME set, unchanged) from
+	     /media/fat/games/btchamp/ with "Mount GV Disc". -->
+	<name>Beat the Champ (GV053 UAA01)</name>
+	<setname>btchamp</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>1996</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Sports</category>
+	<region>USA</region>
+	<players>4</players>
+	<joystick>8-way</joystick>
+	<rotation>horizontal</rotation>
+	<rom index="0" zip="btchamp.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+	<!-- Board config -> ioctl index 4, before index 3 (it starts the blank flash fill) -->
+	<rom index="4">
+		<part>02</part>
+	</rom>
+	<rom index="3" zip="btchamp.zip" md5="None">
+		<part name="btchmp.25c" crc="6d02ea54"/>
+	</rom>
+	<!-- Persistence: 128-byte EEPROM followed by the 512 KB flash (config/nvram/). -->
+	<nvram index="3" size="524416"/>
+	<buttons names="Button 1,Button 2,Button 3,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+	<!-- Trackballs: P1 = USB trackball/mouse and/or left analog stick, P2 = player 2's left analog stick.
+	     FIRST RUN: the flash ships blank (MAME stops at "FLASH ROM CORRUPT"). The core emulates the factory
+	     host on the PSX serial port that the game looks for at power-up, so the game runs its own factory
+	     reset and initialises the flash. Open the OSD once afterwards so MiSTer saves it to config/nvram/.
+	     OSD "Factory Reset (Beat the Champ)" = Next Boot repeats this on a later boot. -->
+</misterromdescription>
