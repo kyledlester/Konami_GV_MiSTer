@@ -235,11 +235,11 @@ Konami GV is a PlayStation (PSX) mainboard turned into an arcade board:
   cooked Mode 1 and raw Mode 2 data tracks are all handled, plus Red Book audio tracks.
 * One RBF for the platform. Each add-on board is switched on by a small board record in its game's MRA
   and is invisible to the other games (its OSD options too).
-* Native 15 kHz output for CRTs with CRT Adjust (H-Size, H-Position, V-Shift), and the MiSTer scaler for
+* Native 15 kHz output for CRTs with CRT Adjust (H-Size, H-Position, V-Shift) thanks to rmonic79/MiSTer-CRT-Adjust, and the MiSTer scaler for
   HDMI.
 * Timing closes on every clock domain.
 
-### Known issues
+### Known considerations
 
 * The core keeps the internal name `PSX` (MiSTer Main's CHD support depends on it), so Main treats it as a
   PlayStation core in a few places. This is harmless; see [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
