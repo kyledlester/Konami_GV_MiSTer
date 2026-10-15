@@ -84,7 +84,16 @@ implements the same model:
   "printing" for one second, paper present, no fault. The printed card is not rendered (MAME draws it on
   a second screen; this core has no second screen).
 * Device check: P2 bit 10 = bit 15 of a 16-bit value rotated on each rising EEPROMOUT bit 4, starting at
-  0 for `tmosh` (F073h `tmoshs`, F0BAh `tmoshsp`, for later).
+  0 for `tmosh`, F073h for `tmoshs`, F0BAh for `tmoshsp` / `tmoshspa` (MAME `m_device_val_start_state`),
+  selected by MRA board byte bits 5:4 (board byte 08h / 18h / 28h).
+
+Seal versions (same board and inputs; MAME 0.289 plays all three through with simulated sensors):
+
+| Game | Set | Disc | Board byte |
+|---|---|---|---|
+| Tokimeki Memorial Oshiete Your Heart Seal Version (GE755 JAA) | `tmoshs` | 755jaa01.chd | 18h |
+| Tokimeki Memorial Oshiete Your Heart Seal Version Plus (GE756 JAB) | `tmoshsp` | 756jab01.chd | 28h |
+| Tokimeki Memorial Oshiete Your Heart Seal Version Plus (GE756 JAA) | `tmoshspa` (clone of `tmoshsp`: its EEPROM from `tmoshsp.zip`) | 756jaa01.chd (MAME: bad dump, "CD was damaged") | 28h |
 
 Inputs: P1 joystick + Button 1 (there is no start button: Button 1 starts); the factory EEPROM asks for
 2 coins per credit.

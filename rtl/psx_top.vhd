@@ -439,6 +439,7 @@ architecture arch of psx_top is
    signal expio_sel              : std_logic;
    signal gv_eepout              : std_logic_vector(7 downto 0);
    signal gv_dc_bit              : std_logic;
+   signal gv_dc_start            : std_logic_vector(15 downto 0);
    signal gv_p2_eff              : std_logic_vector(31 downto 0);
    signal sio_ext_dsr, sio_ext_rx_valid, sio_ext_rx_pop, sio_ext_tx_strobe : std_logic;
    signal sio_ext_rx_data, sio_ext_tx_data : std_logic_vector(7 downto 0);
@@ -1986,6 +1987,12 @@ begin
    bus_exp1_dataRead <= simp_dataRead  when simp_sel = '1' else
                         expio_dataRead when expio_sel = '1' else gv_board_dataRead;
 
+   -- Tokimeki device-check start value per program (MAME m_device_val_start_state), from MRA board byte
+   -- bits 5:4: 0 tmosh, 1 tmoshs (Seal), 2 tmoshsp / tmoshspa (Seal Plus)
+   gv_dc_start <= x"F073" when gv_variant(5 downto 4) = "01" else
+                  x"F0BA" when gv_variant(5 downto 4) = "10" else
+                  x"0000";
+
    -- Tokimeki: P2 bit 10 is the expansion board's device-check line (MAME tokimeki_device_check_r)
    gv_p2_eff <= gv_p2(31 downto 11) & gv_dc_bit & gv_p2(9 downto 0) when gv_variant(3) = '1' else gv_p2;
 
@@ -2022,7 +2029,7 @@ begin
       paper_empty    => '0',
       printer_fault  => '0',
       eep_bit4       => gv_eepout(4),
-      dc_start       => x"0000",                                  -- tmosh (tmoshs F073h, tmoshsp F0BAh)
+      dc_start       => gv_dc_start,
       dc_bit         => gv_dc_bit
    );
 

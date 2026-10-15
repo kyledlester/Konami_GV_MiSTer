@@ -9,7 +9,8 @@
   and plays with the analog stick as the trackball.
 * Beat the Champ initialises its blank flash on the first boot and plays with a mouse as the trackball.
 * Dead Eye plays with a GunCon 2 on a CRT, including off-screen reload (Gun Flash for dark scenes).
-* Tokimeki Memorial Oshiete Your Heart plays through with the simulated heart-rate and GSR sensors.
+* Tokimeki Memorial Oshiete Your Heart and its three Seal versions play through with the simulated
+  heart-rate and GSR sensors.
 * HDMI and native 15 kHz analog output (component and RGB) on three MiSTer setups.
 
 A game that shows HARDWARE ERROR or PROGRAM LOADING / FILE ERROR right after the BIOS checks almost
@@ -34,9 +35,8 @@ always has no disc mounted: mount the CHD with OSD → Mount GV Disc.
   pinned) and region detection is skipped. PSX memory-card automount is forced off.
 
 ## Not in this build
-* The Tokimeki Memorial Oshiete Your Heart Seal versions (`tmoshs`, `tmoshsp`, `tmoshspa`) are not
-  supported yet.
-* Tokimeki Memorial: the printed card is not shown (MAME draws it on a second screen).
+* Tokimeki Memorial: the printed card or sticker sheet is not shown (MAME draws it on a second
+  screen).
 * Unused PlayStation parts (MDEC, memory cards, controller devices, cheat engine, savestates) stay in
   the build but are disabled. None of the supported games touches MDEC (checked in MAME).
 

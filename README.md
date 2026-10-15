@@ -6,14 +6,15 @@ A MiSTer FPGA core for Konami's **GV** arcade board ("Baby Phoenix", 1995-2000),
 system behind **Susume! Taisen Puzzle-Dama / Let's Attack Crazy Cross**, **Hyper Athlete**,
 **Hyper Olympic in Nagano / Nagano Winter Olympics '98**, **Jikkyou Powerful Pro Yakyuu '96**,
 **Wedding Rhapsody**, **The Simpsons Bowling**, **Beat the Champ**, **Dead Eye** and **Tokimeki Memorial
-Oshiete Your Heart**. One core (`KonamiGV`) runs the whole board, including the add-on boards of the last
-four; each game has its own MRA, and every game boots from its **original, unconverted MAME CHD**.
+Oshiete Your Heart** (with its Seal versions). One core (`KonamiGV`) runs the whole board, including the
+add-on boards of the last four; each game has its own MRA, and every game boots from its **original,
+unconverted MAME CHD**.
 
 I created this core because I wanted to play these games on my MiSTer FPGA. I am posting it here and open
 sourcing it for everyone to enjoy and give feedback/make improvements. This core was created with the
 assistance of AI tooling.
 
-**Status: beta.** All eleven supported games boot and play on real MiSTer hardware with music, CD audio
+**Status: beta.** All fourteen supported games boot and play with music, CD audio
 and sound effects, on HDMI and on 15 kHz CRTs. The Simpsons Bowling installs itself from its disc and
 works with a trackball, mouse or analog stick. Beat the Champ and Dead Eye work despite MAME
 listing both as not working, and Tokimeki Memorial plays without its cabinet sensors (see below).
@@ -48,6 +49,8 @@ ROMs, BIOS and CHDs are not included. You must supply your own.
 | Beat the Champ (GV053 UAA01) | `btchamp` | 1996 | Sports | `btchamp.chd` | Full game playable (see below) |
 | Dead Eye (GV054 UAA01) | `kdeadeye` | 1996 | Light-gun shooter | `054uaa01.chd` | Full game playable (see below) |
 | Tokimeki Memorial Oshiete Your Heart (GQ673 JAA) | `tmosh` | 1997 | Dating sim | `673jaa01.chd` | Full game playable (see below) |
+| Tokimeki Memorial Oshiete Your Heart Seal Version (GE755 JAA) | `tmoshs` | 1997 | Dating sim | `755jaa01.chd` | Full game playable (see below) |
+| Tokimeki Memorial Oshiete Your Heart Seal Version Plus (GE756 JAB) | `tmoshsp` | 1997 | Dating sim | `756jab01.chd` | Full game playable (see below) |
 
 ### Alternatives
 
@@ -57,9 +60,14 @@ These use the same core and the same board as the main set, with a different ROM
 | --- | --- | --- | --- | --- | --- |
 | Let's Attack Crazy Cross (GV027 ASIA 1.10) | `lacrazyc` | 1996 | Susume! Taisen Puzzle-Dama | `gv027-a1.chd` | Full game playable |
 | Nagano Winter Olympics '98 (GX720 EAA) | `nagano98` | 1998 | Hyper Olympic in Nagano | `nagano98.chd` | Boots and plays, limited testing |
+| Tokimeki Memorial Oshiete Your Heart Seal Version Plus (GE756 JAA) | `tmoshspa` | 1997 | Tokimeki Memorial Oshiete Your Heart Seal Version Plus (GE756 JAB) | `756jaa01.chd` | Full game playable |
 
-**Not supported yet:** the Tokimeki Memorial Oshiete Your Heart Seal versions (`tmoshs`, `tmoshsp`,
-`tmoshspa`).
+**Nagano Winter Olympics '98:** volume defaults to 00 in this version. If you want sound, raise it in the
+service menu.
+
+**Tokimeki Memorial Oshiete Your Heart Seal Version Plus (GE756 JAA):** a clone of the JAB set in MAME. It
+uses `tmoshsp.zip` (there is no separate zip for the tmoshspa version) and its own disc, `756jaa01.chd`, in
+`/media/fat/games/tmoshspa/`. MAME marks that disc as dumped from a damaged CD; it works properly in this core, but if something goes wrong in this set only, the disc is the likely cause.
 
 ## The Simpsons Bowling: first run
 
@@ -103,7 +111,7 @@ loads on the first start.
 
 * **Aim:** each player's left analog stick, which is how MiSTer delivers light guns (GunCon 2, Sinden,
   Gun4IR, Wiimote). Player 1 can also aim with a mouse (**Gun Aim P1: Mouse**). **Button 1** is the
-  trigger.
+  trigger. Game has been tested working with a GunCon 2 other than issues with the dark picture; see below.
 * **Reload:** shoot off the screen. With a mouse, push it to an edge of the screen and shoot.
 * **Gun Flash** (OSD): a CRT light gun such as the GunCon 2 only sees bright parts of the picture, and
   Dead Eye has many dark scenes. With Gun Flash on, every trigger pull flashes the screen white for two
@@ -117,11 +125,25 @@ loads on the first start.
 A dating-sim fortune game whose cabinet had a heart-rate sensor, a skin-response (GSR) sensor and a
 sticker printer. The game plays completely without them:
 
-* **Heart Rate** (OSD): the simulated pulse the game measures, 60-150 bpm (80 by default, as in MAME),
+* **Heart Rate** (OSD): the simulated pulse the game measures, 60-150 bpm (80 by default),
   or *Hand Off* (no hand on the sensor).
 * **GSR sensor:** pull player 1's left analog stick down; the further down, the higher the reading.
 * **Printer:** the game believes it has paper and prints; the printed card is not shown.
 * Button 1 starts and selects; the game takes two coins per credit by default.
+
+**Seal versions.** "Seal" is Japanese for sticker: these later versions print a sheet of stickers
+instead of a card. They use the same board, sensors and controls as the original and play the same
+way here (the printed sheet is not shown).
+
+| Version | Set | Code | Program date | Notes |
+| --- | --- | --- | --- | --- |
+| Original | `tmosh` | GQ673 JAA | 1997-03-14 | prints a card |
+| Seal Version | `tmoshs` | GE755 JAA | 1997-08-06 | prints one picture across the sticker sheet |
+| Seal Version Plus | `tmoshspa` | GE756 JAA | 1997-08-24 | prints 16 separate pictures (4 x 4); about 35 MB more data on the disc than the Seal Version |
+| Seal Version Plus | `tmoshsp` | GE756 JAB | 1997-09-27 | later revision of the JAA set (the discs differ by only a few sectors) |
+
+Each version checks for its own sensor/printer board at boot; the core answers as the right board for
+each MRA.
 
 ## Controls
 
@@ -154,7 +176,7 @@ from the joystick directions (Up, Down, Left, Right).
     the Champ also has Factory Reset.
   * Dead Eye: Gun Aim P1 (Joystick / Mouse), Crosshair, Gun Flash.
   * Tokimeki Memorial: Heart Rate.
-* **Hardware → GPU**: CXD8514Q (ZV610, the default, as in MAME) or CXD8561Q (GV999).
+* **Hardware → GPU**: CXD8514Q (ZV610, the default) or CXD8561Q (GV999). The default should work fine in all games.
 
 ## Saves
 
@@ -178,10 +200,10 @@ hardware was checked against MAME in simulation:
 * **Beat the Champ / Dead Eye flash**: 16.7 million flash accesses from MAME's Beat the Champ replayed
   with every byte read back identical.
 * **Expansion ports**: trackball counters, gun ports, Tokimeki sensors, printer and device check, and
-  the Beat the Champ factory host, checked against MAME's behaviour.
+  the Beat the Champ factory host, checked against MAME's behavior.
 * **Video**: the picture is read from video memory exactly as MAME and the real GPU do.
 
-Where MAME falls short, the core goes further: Beat the Champ initialises its blank flash through the
+Where MAME falls short, the core goes further: Beat the Champ initializes its blank flash through the
 factory host (MAME stops at *FLASH ROM CORRUPT*), and Dead Eye works with real light guns, including
 off-screen reload and the Gun Flash option for CRT guns.
 

@@ -1,0 +1,32 @@
+<misterromdescription>
+	<!-- Expansion board: heart-rate / skin-response sensors and printer (MAME 0.289 machine "tmoshspa"). Disc: mount 756jaa01.chd (MAME set, unchanged) from
+	     /media/fat/games/tmoshspa/ with "Mount GV Disc". -->
+	<name>Tokimeki Memorial Oshiete Your Heart Seal Version Plus (GE756 JAA)</name>
+	<setname>tmoshspa</setname>
+	<rbf>KonamiGV</rbf>
+	<mameversion>0289</mameversion>
+	<year>1997</year>
+	<manufacturer>Konami</manufacturer>
+	<category>Simulation</category>
+	<region>Japan</region>
+	<players>1</players>
+	<joystick>8-way</joystick>
+	<rotation>horizontal</rotation>
+	<rom index="0" zip="tmoshspa.zip|tmoshsp.zip|konamigv.zip" md5="None">
+		<part name="999a01.7e" crc="ad498d2d"/>
+	</rom>
+	<!-- Board config -> ioctl index 4: bit 3 = Tokimeki board, bits 5:4 = 2 Seal Version Plus (device check F0BAh) -->
+	<rom index="4">
+		<part>28</part>
+	</rom>
+	<rom index="3" zip="tmoshspa.zip|tmoshsp.zip" md5="None">
+		<part name="tmoshsp.25c" crc="af4cdd87"/>
+	</rom>
+	<nvram index="3" size="128"/>
+	<buttons names="Button 1,-,-,Start,Coin,Service,Test" default="A,B,X,Start,Select,R,L"/>
+	<!-- Sensors: the heart-rate sensor is simulated at the OSD "Heart Rate" setting (Hand Off = no hand on
+	     the sensor); the skin-response (GSR) level follows the P1 left analog stick pulled down.
+	     The printer reports ready with paper; printouts are discarded. -->
+	<!-- MAME clone of tmoshsp: same EEPROM (tmoshsp.zip), own disc 756jaa01.chd. MAME marks this disc a bad
+	     dump ("The CD was damaged") and the set not working; it plays through in MAME 0.289. -->
+</misterromdescription>

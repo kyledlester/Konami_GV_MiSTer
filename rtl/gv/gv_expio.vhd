@@ -21,7 +21,7 @@
 --              zero, ticks = CPU clock / 16 = clk1x / 8; 3 x {7-bit command, F9h}; command 11h = print ->
 --              printing for 1 s, 17h / 10h = page / memory handling, no visible output here)
 --   device check (P2 bit 10): bit 15 of a 16-bit word rotated left on each rising EEPROMOUT bit 4,
---              starting at dc_start (0 for tmosh).
+--              starting at dc_start (0 tmosh, F073h tmoshs, F0BAh tmoshsp / tmoshspa).
 --
 -- Reads are registered (valid the cycle after bus_read), like gv_board. bus_sel marks this module's reads.
 --
@@ -102,6 +102,7 @@ architecture rtl of gv_expio is
    signal dc_val     : std_logic_vector(15 downto 0) := (others => '0');
    signal eep4_q     : std_logic := '0';
    signal dc_loaded  : std_logic := '0';
+   signal dc_start_q : std_logic_vector(15 downto 0) := (others => '0');
 
    function cnt(x, sx : unsigned(15 downto 0)) return unsigned is
    begin
@@ -262,7 +263,8 @@ begin
 
          -- device check
          eep4_q <= eep_bit4;
-         if dc_loaded = '0' then
+         dc_start_q <= dc_start;
+         if dc_loaded = '0' or dc_start /= dc_start_q then          -- reset, or the MRA set a new value
             dc_val    <= dc_start;
             dc_loaded <= '1';
          elsif eep_bit4 = '1' and eep4_q = '0' then
